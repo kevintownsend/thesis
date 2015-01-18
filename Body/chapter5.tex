@@ -1,0 +1,165 @@
+\chapter{MATRIX COMPRESSION}
+\label{chapter:compression}
+Not much work focuses solely on matrix compression. However, matrix compression for SpMV bas been studied. Most approaches split the problem into matrix index compression and value compression. We agree with this approach.
+\par We discuss floating point value compression in the next chapter. In this chapter we discuss index compression, but first we want to discuss matrix traversal.
+\section{Matrix Traversal}
+We show matrix traversal and index compression are linked. We use deltas to compress indices. In $R^3$ we use a traversal called global row major local column major. For the rest of teh paper we call this traversal column row traversal.
+\begin{table*}
+\centering
+\begin{threeparttable}
+\caption{General information on test matrices and performance of previous compression methods}
+\label{tbl:analysis}
+\begin{tabular}{cccccccccc}
+\hline
+\bfseries Matrix & \bfseries \shortstack{COO\\(bytes/nnz)} & \bfseries \shortstack{CSR\\(bytes/nnz)} & \bfseries COO+gzip &\bfseries CSR+gzip & \bfseries $R^3$ Format \\
+ \\
+\hline
+dense2\tnote{a} &  $16.00$ & $12.06$ & $0.85$ & $0.51$ & $2.27$ \\
+pdb1HYS & $16.00$ & $12.15$ & $7.55$ & $6.68$ & $9.60$ \\
+consph & $16.00$ & $12.65$ & $3.23$ & $2.21$ & $7.60$ \\
+cant &  $16.00$ & $12.03$ & $4.39$ & $4.32$ & $9.13$ \\
+pwtk &  $16.00$ & $12.10$ & $0.55$ & $0.32$ & $2.58$ \\
+rma10\tnote{a} &  $16.00$ & $12.71$ & $4.67$ & $3.56$ & $5.82$ \\
+qcd5\_4\tnote{a} &$16.00$ & $12.06$ & $5.43$ & $5.42$ & $9.11$ \\
+shipsec1 &  $16.00$ & $12.00$ & $0.06$ & $0.04$ & $2.26$ \\
+mac\_econ\_fwd500 &  $16.00$ & $13.00$ & $4.09$ & $3.01$ & $5.46$ \\
+mc2depi &  $16.00$ & $12.08$ & $4.57$ & $4.46$ & $8.81$ \\
+cop20k\_A &  $16.00$ & $12.08$ & $0.35$ & $0.21$ & $2.46$ \\
+scircuit & $16.00$ & $12.16$ & $3.68$ & $2.92$ & $7.19$ \\
+webbase-1M & $16.00$ & $13.29$ & $2.18$ & $1.73$ & $2.64$ \\
+\hline
+average\tnote{b} &  $16.00$ & $12.34$ & $3.20$ & $2.72$ & $5.76$ \\
+
+\hline
+\end{tabular}
+\begin{tablenotes}
+\item [a] Boolean matrices
+\item [b] Excludes boolean matrices (TODO)
+\end{tablenotes}
+\end{threeparttable}
+\end{table*}
+\subsection{GRMLCM}
+\label{sec:grmlcm}
+\subsection{Column Row Traversal}
+Vector values get reused multiple times. The SpMV kernel uses each vector value by precisely the number of elements in the corresponding column of the matrix. We want to load the vector values as few times as possible. We can achieve this through caching or changing the matrix traversal. Column major traversal allows perfect reuse of the $x$ vector, but the intermediate $y$ vector would get huge. Our approach compromises by doing column major traversal on the small scale and row major traversal on the large scale. We call this column row traversal. Consider the following example matrix: a row-major traversal would read the matrix in the following order: $[A_{11}, A_{14}, A_{17}, A_{25}, A_{28} \dots]$. Conversely, with column height equal to four the traversal would read as: $[A_{11}, A_{41}, A_{32}, A_{33}, A_{14} \dots]$. 
+\par At this point we have a traversal that abides by the rules needed for the multiply accumulator and reuses vector values. However, no thought has yet been given to compression. To better understand compression we analyze several compression schemes.
+\indent
+\subsubsection{Delta Compression}
+\cite{4625888} also noted the clumpy distribution of values in most matrices. So instead of storing the row and column of each element (or just the column as in CSR), we store the distance from the previous element or the delta value. The delta value equals the number of elements between the previous and current element using whatever traversal method the matrix uses, in our case GRMLCM16. In the previous matrix example the deltas are: $[0, 3, 15, 3, 1 \dots]$. Our method stores the delta in a space between 5 and 45 bits (5, 13, 21,29, or 45 bits).
+\begin{table*}
+\centering
+\begin{threeparttable}
+\caption{Detailed analysis of index compression and performance of Smac}
+\label{tbl:index}
+\begin{tabular}{ccccccccc}
+\hline
+\bfseries Matrix & \bfseries \tikz \node[rotate=90]{COO}; & \bfseries \tikz \node[rotate=90]{CSR}; & \bfseries \tikz \node[rotate=90]{CSR.gz}; & \bfseries \tikz \node[rotate=90]{Delta bits}; & \bfseries \tikz \node[rotate=90]{GRMLCM16}; & \bfseries \tikz \node[rotate=90]{GRMLCM256}; & \bfseries \tikz \node [rotate=90]{GRMLCM1024}; & \bfseries \tikz \node[rotate=90]{Smac}; \\
+\hline
+dense2 & 8.00 & 4.00 & 0.03 & 0.00 & 0.00 & 0.00 & 0.00 & 0.13\\
+pdb1HYS & 8.00 & 4.03 & 0.14 & 0.06 & 0.05 & 0.05 & 0.06 & 0.21\\
+consph & 8.00 & 4.06 & 0.19 & 0.13 & 0.10 & 0.11 & 0.12 & 0.30\\
+cant & 8.00 & 4.06 & 0.40 & 0.12 & 0.10 & 0.11 & 0.11 & 0.31\\
+pwtk & 8.00 & 4.08 & 0.17 & 0.09 & 0.05 & 0.06 & 0.07 & 0.22\\
+rma10\ & 8.00 & 4.08 & 0.20 & 0.11 & 0.08 & 0.09 & 0.10 & 0.28\\
+qcd5\_4 & 8.00 & 4.10 & 0.31 & 0.24 & 0.16 & 0.20 & 0.22 & 0.46\\
+shipsec1 & 8.00 & 4.16 & 0.86 & 0.41 & 0.27 & 0.34 & 0.37 & 0.72\\
+mac\_econ\_fwd500 & 8.00 & 4.65 & 1.48 & 0.77 & 0.56 & 0.61 & 0.64 & 1.16\\
+mc2depi & 8.00 & 5.00 & 1.78 & 1.11 & 0.50 & 0.81 & 0.88 & 1.72\\
+cop20k\_A & 8.00 & 4.15 & 1.07 & 0.58 & 0.42 & 0.49 & 0.53 & 0.90\\
+scircuit & 8.00 & 4.71 & 1.61 & 0.85 & 0.48 & 0.58 & 0.66 & 1.10\\
+webbase-1M & 8.00 & 5.29 & 1.35 & 1.57 & 0.46 & 0.55 & 0.64 & 1.22\\
+\hline
+average\tnote{a} & 8.00 & 4.36 & 0.80 & 0.50 & 0.27 & 0.33 & 0.37 & 0.72\\
+
+\hline
+\end{tabular}
+\begin{tablenotes}
+\item [a] Excludes dense matrix
+\end{tablenotes}
+\end{threeparttable}
+\end{table*}
+
+\par Many papers use delta compression \cite{smac:r3, smac:kourtis, smac:kestur}. Delta Compression stores the distance between the previous and current element. This results in smaller values that require fewer bits. The overhead of encoding these bit length varies among the different schemes. The storage size per element of these delta values using only the bits necessary are in column 5 of table \ref{tbl:index} (this does not include overhead).\\
+\indent We also choose to use the general compression program gzip in the comparison as well. Again table \ref{tbl:index} shows the compression of gzip on top of the CSR format. Gzip does very well, in one case (webbase-1M) even takes less space than storing only delta bits. This is particularly surprising considering that extra overhead is needed to decode these delta bits. The reason this occurs is because large delta values can represent a short vertical jump. gzip remembers previous column indexes and therefore can compress them easily.\\%
+\begin{sidewaystable}
+\centering
+\begin{threeparttable}
+\caption{The distribution of the bit lengths required to store the delta length when using GRMLCM16 traversal}
+\label{tbl:indexDist}
+\begin{tabular}{cccccccccccc}
+\hline
+\bfseries Matrix & \bfseries 0 & \bfseries 1 & \bfseries 2 & \bfseries 3 & \bfseries 4 & \bfseries 5 & \bfseries 6 &\bfseries 7 & \bfseries 8 & \bfseries 9 & \bfseries 9+\\
+\hline
+dense2 & \%100.00 & \%0.00 & \%0.00 & \%0.00 & \%0.00 & \%0.00 & \%0.00 & \%0.00 & \%0.00 & \%0.00 & \%0.00\\
+pdb1HYS & \%89.23 & \%0.44 & \%2.39 & \%2.43 & \%4.77 & \%0.01 & \%0.19 & \%0.09 & \%0.13 & \%0.05 & \%0.26\\
+consph & \%80.47 & \%1.58 & \%0.03 & \%3.30 & \%12.89 & \%0.71 & \%0.02 & \%0.00 & \%0.00 & \%0.48 & \%0.52\\
+cant & \%75.74 & \%5.43 & \%0.08 & \%2.99 & \%14.34 & \%0.58 & \%0.40 & \%0.12 & \%0.02 & \%0.01 & \%0.29\\
+pwtk & \%87.88 & \%1.49 & \%1.25 & \%3.07 & \%5.87 & \%0.04 & \%0.01 & \%0.00 & \%0.00 & \%0.01 & \%0.38\\
+rma10 & \%81.63 & \%0.52 & \%4.43 & \%4.17 & \%7.66 & \%0.15 & \%0.56 & \%0.18 & \%0.07 & \%0.09 & \%0.53\\
+qcd5\_4 & \%67.63 & \%0.11 & \%3.85 & \%7.10 & \%17.36 & \%2.62 & \%0.00 & \%0.21 & \%0.00 & \%0.00 & \%1.12\\
+shipsec1 & \%40.79 & \%11.53 & \%7.76 & \%3.74 & \%23.43 & \%9.51 & \%0.40 & \%0.45 & \%0.24 & \%0.36 & \%1.81\\
+mac\_econ\_fwd500 & \%16.16 & \%3.98 & \%11.35 & \%7.30 & \%15.28 & \%12.42 & \%9.75 & \%6.41 & \%6.05 & \%3.77 & \%7.52\\
+mc2depi & \%23.36 & \%0.00 & \%0.00 & \%0.01 & \%24.92 & \%47.00 & \%0.02 & \%0.00 & \%0.00 & \%0.01 & \%4.68\\
+cop20k\_A & \%50.18 & \%2.14 & \%1.55 & \%1.83 & \%24.16 & \%2.65 & \%1.11 & \%1.10 & \%1.07 & \%0.95 & \%13.26\\
+scircuit & \%37.71 & \%3.00 & \%2.71 & \%2.62 & \%25.65 & \%8.14 & \%3.45 & \%2.71 & \%2.27 & \%1.51 & \%10.24\\
+webbase-1M & \%46.55 & \%2.40 & \%1.70 & \%1.27 & \%5.57 & \%30.67 & \%0.74 & \%0.50 & \%0.36 & \%0.25 & \%9.99\\
+\hline
+average\tnote{a} & \%58.11 & \%2.72 & \%3.09 & \%3.32 & \%15.16 & \%9.54 & \%1.39 & \%0.98 & \%0.85 & \%0.62 & \%4.22\\
+
+\hline
+\end{tabular}
+\begin{tablenotes}
+\item [a] Excludes dense matrix
+\end{tablenotes}
+\end{threeparttable}
+\end{sidewaystable}%
+\indent It seems hard to believe that gzip would be the best compression scheme. However, we notice column row traversal has smaller deltas than row major traversal. The table \ref{tbl:indexDist} shows this distribution. This is because column row traversal does make vertical steps.
+\par Row column traversal does improve the index compression for all matrices and a significant improvement for some. However it is disappointing to see that larger column heights lead to worse performance. To keep the larger column heights for better vector reuse, but still achieve small deltas we propose short row traversal in the column traversal. In other words row column row (RCR) traversal. The row width will be experimentally choosen, but 16 seems like a good guess. This means 16 vector values instead of 1 need to be cached, but this seems achievable.
+\par To illustrate let us look at the traversal in the example matrix. In this example we set the row and column parameters to 2 and 4 respectfully. In this case the RCR traversal is: $[A_{11}, A_{32}, A_{41}, A_{14}, A_{33} \dots]$\\
+\par However it does not fix the issue that extra overhead is needed to decode the delta bits. We created our own encoding scheme. The rest of this section describes our encoding scheme. To reduce the overhead we use a variable sized encoding scheme. We looked at the distribution of bit lengths over all the matrices in the test cases. 
+
+%TODO: split index and value analysis
+%COO (indicies only), CSR, COO+gz, CSR+gz, delta, delta+gz, R3, R3+gz, values only, 256 mc, 66k mc var index, fpc
+
+
+
+
+\subsection{Smac index compression}
+The easiest trend to see from the distribution table is that more than half of the elements usually occur immediately after another element. So we choose to simply encode these as a $1_2$. Now that we use $1_2$ as a code, in order for the codes to be uniquely decoded, all the other codes must have a leading 0 (eg $110_2$, $00_2$). \\
+\indent  Our second observation is that bit length groups can be combined at little cost. For example 10 bit deltas and an 11 bit delta can both be encoded as an 11 bit delta. This wastes 1 bit of the 10 bit delta encoded as 11 bits. So grouping by 2s would waste an average of 0.5 bits. Then grouping by 3s wastes 1 bit per element. Groups of 4 wastes 1.5 bits ect. So there is a trade off between using more codes, therefore longer codes, and wasting bits to do groupings. Groups of 3 seemed to work nicely.\\
+\indent Our third observation was that longer delta lengths generally occur less frequently. The frequency is similar to a exponential decreasing function. So we made the codes larger for the larger deltas.\\
+\indent In the end our encoding was the following: 0 bits : $1_2$, 1-3 bits : $10_2$, 4-6 bits : $100_2$, 7-9 bits : $1000_2$ ect. In other words: a ``1" followed by $N$ 0s, where $N$ is the $N^{th}$ group of 3 delta lengths. The last column of \ref{tbl:index} shows the performance of this scheme.
+
+\begin{table*}
+\centering
+\begin{threeparttable}
+\caption{Detailed value compression analysis and performance comparison}
+\label{tbl:value}
+\begin{tabular}{ccccccccc}
+\hline
+\bfseries Matrix & \bfseries \tikz \node[rotate=90]{uncompressed}; & \bfseries \tikz \node[rotate=90]{Unique Values}; & \bfseries \tikz \node[rotate=90]{Unique/nnz $\times 8$}; & \bfseries \tikz \node[rotate=90]{256 Common}; & \bfseries \tikz \node[rotate=90]{GZIP}; & \bfseries \tikz \node[rotate=90]{FPC}; & \bfseries \tikz \node[rotate=90]{\shortstack{Smac Unlimited \\Compression}}; & \bfseries \tikz \node[rotate=90]{\shortstack{Smac 4K \\Compression}};\\
+\hline
+dense2\tnote{a} & $8.00$ & $1.00$ & $0.00$ & $1.00$ & $0.01$ & $0.50$ & $0.75$ & $0.76$ \\
+pdb1HYS & $8.00$ & $1.10 \times 10^{6}$ & $4.08$ & $7.99$ & $4.15$ & $7.99$ & $5.07$ & $7.91$ \\
+consph & $8.00$ & $1.24 \times 10^{6}$ & $3.28$ & $7.99$ & $5.10$ & $7.95$ & $4.77$ & $7.91$ \\
+cant & $8.00$ & $1.07 \times 10^{2}$ & $0.00$ & $1.00$ & $0.11$ & $0.91$ & $0.89$ & $0.90$ \\
+pwtk & $8.00$ & $3.63 \times 10^{6}$ & $5.04$ & $7.95$ & $4.29$ & $7.37$ & $5.83$ & $7.81$ \\
+rma10\tnote{a} & $8.00$ & $1.00$ & $0.00$ & $1.00$ & $0.01$ & $0.50$ & $0.75$ & $0.76$ \\
+qcd5\_4\tnote{a} & $8.00$ & $1.00$ & $0.00$ & $1.00$ & $0.01$ & $0.50$ & $0.75$ & $0.77$ \\
+shipsec1 & $8.00$ & $8.86 \times 10^{4}$ & $0.56$ & $6.39$ & $2.08$ & $3.80$ & $2.34$ & $4.06$ \\
+mac\_econ\_fwd500 & $8.00$ & $1.08 \times 10^{5}$ & $1.36$ & $5.20$ & $0.73$ & $1.45$ & $2.32$ & $2.03$ \\
+mc2depi & $8.00$ & $3.58 \times 10^{3}$ & $0.00$ & $4.94$ & $1.24$ & $5.01$ & $1.58$ & $1.51$ \\
+cop20k\_A & $8.00$ & $9.56 \times 10^{5}$ & $5.84$ & $7.97$ & $5.53$ & $7.97$ & $5.92$ & $7.85$ \\
+scircuit & $8.00$ & $8.82 \times 10^{4}$ & $1.44$ & $5.41$ & $1.95$ & $3.68$ & $2.61$ & $3.56$ \\
+webbase-1M & $8.00$ & $5.65 \times 10^{2}$ & $0.00$ & $1.48$ & $0.38$ & $1.92$ & $1.10$ & $1.11$ \\
+\hline
+average\tnote{b} & $8.00$ & $7.22 \times 10^{5}$ & $2.16$ & $5.63$ & $2.56$ & $4.81$ & $3.24$ & $4.46$ \\
+
+\hline
+\end{tabular}
+\begin{tablenotes}
+\item [a] Boolean matrices
+\item [b] Excludes boolean matrices
+\end{tablenotes}
+\end{threeparttable}
+\end{table*}
