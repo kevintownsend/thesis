@@ -10,11 +10,9 @@
 
 \bwtsecfalse
 %\bwtsectrue
+Floating point compression is the second half of matrix compression. Figure \ref{tbl:value} shows a comparison of compression schemes. In the end, we created a program (and library) called fzip. In total fzip takes advantage of three compressible features of datasets: repeating sequences of values (patterns larger than 8 bytes long), repeating values (patterns exactly 8 bytes long), and repeating prefixes (patterns less than 8 bytes long).
 
-Many datasets contain repeated values\cite{floatZip:Kourtis,floatZip:Burtscher}. Figure \ref{fig:repeat} shows an analysis of this. General compression schemes like gzip and algorithms specific to floating point compression like FPC do not single out this particular feature. However, we single out this feature for better compression.
-\par
-Take the following simple scheme: store the repeated values separately form the rest of the data stream. With this scheme an index replaces each repeated value in the original data stream. This simple scheme works remarkably well for some datasets. However, we can achieve better compression. For example, when many repeating sequences of values exist, compressing them can vastly outperform the previous compression scheme. In total fzip takes advantage of three compressible features of datasets: repeating sequences (more than 8 bytes long), repeating values (8 bytes long) and repeating prefixes (less than 8 bytes long).
-\par Floating point compression has multiple uses. In scientific computing floating point compression can improve the performance of parallel computing applications. Manycore computers have steadily been increasing computation capacity, but internal communication does not increase as fast. Compression has increased the performance of MPI implementations\cite{floatZip:Ke}. Also, floating point compression has been used to accelerate RAM access in applications like SpMV (Sparse Matrix Vector Multiplication)\cite{floatZip:Kourtis,floatZip:Townsend}.\\
+For SpMV we need to make a hardware decoder. Currently everything except the BWT should be hardware amenable. We can remove that part and still expect good compression. Removing BWT removes compressing patterns larger than 8 bytes long. In the future we could use methods like LZW \cite{}, which is a little bit easier to get into hardware.
 \begin{table*}
 \centering
 \begin{threeparttable}
@@ -22,7 +20,7 @@ Take the following simple scheme: store the repeated values separately form the 
 \label{tbl:value}
 \begin{tabular}{ccccccccc}
 \hline
-\bfseries Matrix & \bfseries \tikz \node[rotate=90]{uncompressed}; & \bfseries \tikz \node[rotate=90]{Unique Values}; & \bfseries \tikz \node[rotate=90]{Unique/nnz $\times8$ }; & \bfseries \tikz \node[rotate=90]{256 Common}; & \bfseries \tikz \node[rotate=90]{GZIP} ; & \bfseries \tikz \node[rotate=90]{FPC}; & \bfseries \tikz \node[rotate=90]{\shortstack{Smac Unlimited \\Compression}}; & \tikz \node[rotate=90]{\bfseries \shortstack{Smac 4K \\Compression}};\\
+\bfseries Matrix & \bfseries \tikz \node[rotate=90]{uncompressed}; & \bfseries \tikz \node[rotate=90]{Unique Values}; & \bfseries \tikz \node[rotate=90]{Unique/nnz $\times 8$}; & \bfseries \tikz \node[rotate=90]{256 Common}; & \bfseries \tikz \node[rotate=90]{GZIP}; & \bfseries \tikz \node[rotate=90]{FPC}; & \bfseries \tikz \node[rotate=90]{\shortstack{Pattern\\ Compression\\ Unlimited}}; & \bfseries \tikz \node[rotate=90]{\shortstack{Pattern\\ Compression\\ 32KB}};\\
 \hline
 dense2\tnote{a} & $8.00$ & $1.00$ & $0.00$ & $1.00$ & $0.01$ & $0.50$ & $0.75$ & $0.76$ \\
 pdb1HYS & $8.00$ & $1.10 \times 10^{6}$ & $4.08$ & $7.99$ & $4.15$ & $7.99$ & $5.07$ & $7.91$ \\
@@ -51,9 +49,9 @@ average\tnote{b} & $8.00$ & $7.22 \times 10^{5}$ & $2.16$ & $5.63$ & $2.56$ & $4
 %
 \section{Previous work}
 \label{sec:val}
-It was noted in \cite{smac:kourtis} that sparse matrices often have repeated values. This is the focus of our value compression. $R^3$ had a simple scheme using this. It stored the 256 most common values, so those common values could be represented as one byte. The performance of this scheme is shown in the column "256 common" in table \ref{tbl:value}.\\
-\indent Taking a step back, uncompressed data would take 8 bytes per element. Any compression scheme should take less than 8 bytes per element. We looked at \cite{smac:burtscher} describing it's own compression scheme FPC. FPC performs OK. This scheme looks for repeated patterns. However it does not exploit the fact most of its compression comes from exact (8 byte) value repeats.\\
-\indent Gzip performs quite well too. We have a general understanding of how Gzip works. We suspect the reason for the good performance is the large memory space and the use of looking up repeated 8-byte memory sequences.\\
+It was noted in \cite{prelim:kourtis} that sparse matrices often have repeated values. This is the focus of our value compression. $R^3$ had a simple scheme using this. It stored the 256 most common values, so those common values could be represented as one byte. The performance of this scheme is shown in the column ``256 common" in table \ref{tbl:value}.\\
+\indent Taking a step back, uncompressed data would take 8 bytes per element. Any compression scheme should take less than 8 bytes per element. We looked at \cite{smac:burtscher} describing it's own compression scheme FPC. FPC performs well. This scheme looks for repeated patterns. However it does not exploit the fact most of its compression comes from exact (8 byte) value repeats.\\
+\indent Gzip performs quite well too. We have a general understanding of how Gzip works. We suspect the reason for the good performance is the large memory space and being able to look up previously occurring 8-byte values.\par
 \indent Our focus on using repeated values is reinforced by looking at the number of unique values. If only the unique values were stored the average compression would be 2.16 bytes per element. This can not be used by itself since this ignores the indexing required to access these values, but this gives an estimate of the possible compression size.%
 \indent In the remainder of this paper we talk about 
 \ifshort
@@ -63,7 +61,7 @@ previous approaches (section \ref{sec:relatedWork}),
 an analysis of floating point datasets (section \ref{sec:analysis}), our approach to floating point compression (section \ref{sec:approach}) and our results (section \ref{sec:results}).
 \begin{figure}
 \center
-\begin{tikzpicture}[yscale=.5]
+\begin{tikzpicture}[yscale=.7,xscale=2]
 
 \path[draw] (0,0) -- (0,13.5);
 \path[draw] (0,0) -- (5,0);
@@ -178,13 +176,11 @@ an analysis of floating point datasets (section \ref{sec:analysis}), our approac
 \caption[not robust]{The above figure shows the distribution of repeats in each dataset. Each shade represents a different number of repeats. For instance: \tikz \fill (0,0) rectangle (.2,.2);:$>512$, \tikz \fill[black!50] (0,0) rectangle (.2,.2);:$16$, \tikz \fill[black!20] (0,0) rectangle (.2,.2);:$2$, \tikz \fill[black!10] (0,0) rectangle (.2,.2);:$1$(no repeats).}
 \label{fig:repeat}
 \end{figure}
-\ifshort
-\else
 \section{Related Work}
 \label{sec:relatedWork}
-FPC, the program most similar to our work, uses predictors to compress data. A predictor uses the previous data in the data set to guess the current element in the data set. FPC uses hash functions to implement their predictors. Passing an argument between 1 and 25 configures the hash table size. Larger hash tables necessarily compress better because values in the hash table overwritten less often. However large hash tables cause slower performance compared to hash tables that can fit in cache.\\
-\indent Each value gets encoded with a 4 bit header followed by 0,1,2,3,4,6,7 or 8 bytes. The first bit specifies which of the 2 predictors resulted in the most matching bytes compared to the correct current value. Then the next 3 bits encode this number of bytes (however 5 bytes is rounded down to 4 bytes). Then the (least significant) bytes that the hash failed to predict follow.\\
-\indent FPC has the advantage of speed. Particularly when the hash table fits in cache. Although good, the compression ratio suffers because predictors do not always get the best or a good prediction. If a pattern does not exist among the value in the data set then FPC can not predict with any accuracy. Let us design this "anti-FPC" dataset. Take the set of numbers $\{10^0, 10^1, 10^2, 10^3, \dots, 10^9\}$ and randomly choose one (with replacement) to add to the anti-FPC dataset. Do this a million times to get a dataset with a million values (8MB in size). You can observe the performance of this in figure \ref{fig:antiFpc}.\\
+FPC, the program most similar to our work, uses predictors to compress data. A predictor uses the previous data in the data set to guess the current element in the data set. FPC uses hash functions to implement their predictors. Passing an argument between 1 and 25 to FPC configures the hash table size. Larger hash tables necessarily predict better because values in the hash table get overwritten less often. However, large hash tables cause slower performance compared to hash tables that can fit in cache.\\
+\indent In FPC, each value gets encoded with a 4 bit header followed by 0, 1, 2, 3, 4, 6, 7 or 8 bytes. The first bit specifies which of the 2 predictors resulted in the most matching bytes compared to the correct current value. Then, the next 3 bits encode this number of bytes, however, 5 bytes is rounded down to 4 bytes. Then, the least significant bytes that the hash failed to predict follow.\\
+\indent FPC has the advantage of speed. Particularly when the hash table fits in cache. Although good, the compression ratio suffers because predictors do not always get the best or a good prediction. If a pattern does not exist among the values in the data set then FPC can not predict with any accuracy. Let us design this ``anti-FPC" dataset. Take the set of numbers $\{10^0, 10^1, 10^2, 10^3, \dots, 10^9\}$ and randomly choose one (with replacement) to add to the anti-FPC dataset. We do this a million times to get a dataset with a million values (8MB in size). You can observe the performance of this in \figurename~\ref{fig:antiFpc}.\\
 \begin{figure}
 \begin{tikzpicture}[yscale=.3]
 \draw (0,0) -- (0,4.5);
@@ -192,7 +188,7 @@ FPC, the program most similar to our work, uses predictors to compress data. A p
 \foreach \x/\n in {0/,1/1,2/2,3/4,4/8,5/16}{
     \draw (\x,.1) -- (\x,-.1)node[anchor=north]{\n};
 }
-\node at (3,-2){Compression Ratio on the anti-FPC dataset};
+\node at (3,-2.2){Compression Ratio on the anti-FPC dataset};
 \small
 \foreach \y/\n in {0/,1/gzip -9,2/FPC 25,3/bzip -9,4/fzip}{
     \node[anchor=east, rotate=0] at (0,\y){\n};
@@ -206,17 +202,16 @@ FPC, the program most similar to our work, uses predictors to compress data. A p
 \caption{We engineering a dataset to make the performance of FPC look bad compared to other programs. Although unfair, this shows a type of pattern that FPC does not exploit and other programs do. This problem exists because FPC only uses predictors for compression.}
 \label{fig:antiFpc}
 \end{figure}
-\fi
+
 \section{Floating-Point Value Analysis}
 \label{sec:analysis}
-Continuing the analysis from section \ref{sec:intro}, figure \ref{fig:repeat} shows an analysis of the repeating values in each of the datasets used for testing. Several characteristics of this analysis suggest that compressing repeating values would perform well. For example, in half of the datasets at least 80\% of the values repeat.\\
+Continuing the analysis from Section~\ref{sec:intro}, \figurename~\ref{fig:repeat} shows an analysis of the repeating values in each of the datasets used for testing. Several characteristics of this analysis suggest that compressing repeating values will perform well. For example, in half of the datasets at least 80\% of the values repeat.\\
 \indent
-Another pattern exists among the prefixes of the values. To understand why, look at the floating point data structure. Double-precision floating-point values have 3 parts: a sign bit, 11 exponent bits and 52 fraction bits. Values close to each other often share the same sign (some datasets only contain positive numbers). Likewise close values also often share the most significant bits of the exponent. In fact the bits in floating-point values already exist in most likely shared to least likely shared sorted order: \{sign bit, most significant exponent bits, least significant exponent bits, most significant fraction bits, least significant fraction bits\}.\\
-\indent We gauged the strength of the pattern in a particular dataset by looking at how many prefix bits the adjacent values share. Figure \ref{fig:prefix} describes this analysis. From this figure we see that the first byte or so often repeats. However there usually exists a rapid decline in shared bits after this point.\\
-%
+Another pattern exists among the prefixes of the values. To understand why, look at the floating point data structure. Double-precision floating-point values have 3 parts: a sign bit, 11 exponent bits and 52 fraction bits. Values close to each other in the dataset often share the same sign. (Some datasets only contain positive numbers.) Likewise, close values often share the most significant bits of the exponent. In fact, the bits in floating-point values already exist in most likely shared to least likely shared sorted order: \{sign bit, most significant exponent bits, least significant exponent bits, most significant fraction bits, least significant fraction bits\}.\\
+\indent We gauge the strength of the pattern in a particular dataset by looking at how many prefix bits the adjacent values share. \figurename~\ref{fig:prefix} describes this analysis. From this figure, we see that the first byte or so often repeats. However, there usually exists a rapid decline in shared bits after this point.\par
 \begin{figure}
 \center
-\begin{tikzpicture}[xscale=.1, yscale=.5]
+\begin{tikzpicture}[xscale=.2, yscale=.7]
 \path[draw] (0,0) -- (64,0);
 \path[draw] (0,0) -- (0, 13.5);
 \path[draw,dashed] (12,0) -- (12,13.5);
@@ -309,10 +304,10 @@ Another pattern exists among the prefixes of the values. To understand why, look
 \caption{The above figure represents local prefix prediction. The figure shows the density function of 2 adjacent values sharing at least $x$ number prefix bits. All of the data sets start at $(0,\%100)$. The curves end at the percent of values that are identical to their previous value for that dataset.}
 \label{fig:prefix}
 \end{figure}%
-\indent Datasets might also have repeating patterns of values. For example the sequence, $1.0, 2.0, 3.0, 1.0, 2.0, 3.0$, has an obvious pattern. One can use the Burrows-Wheeler Transform\cite{floatZip:Burrows} to analyze these patterns. Figure \ref{fig:bwt} describes this algorithm some, however many other sources describe this algorithm in more detail\cite{floatZip:Burrows,floatZip:Salomon}. Figure \ref{fig:pattern} analyzes the number of repeats that appear after the Burrow-Wheeler Transform. As the figure shows 4 of the 13 test cases have a lot of patterns, but the rest have relatively few.
+Datasets might also have repeating patterns of values. For example, the sequence $1.0, 2.0, 3.0, 1.0, 2.0, 3.0$ has an obvious pattern. One can use the Burrows-Wheeler Transform\cite{floatZip:Burrows} to analyze these patterns. \figurename~\ref{fig:bwt} describes this algorithm some, however, many other sources describe this algorithm in more detail\cite{floatZip:Burrows,floatZip:Salomon}. \figurename~\ref{fig:pattern} analyzes the number of repeats that appear after the Burrow-Wheeler Transform. As the figure shows, 4 of the 13 test cases have a lot of patterns, but the rest have relatively few.
 \begin{figure}
 \center
-\begin{tikzpicture}[yscale=.5,xscale=1.1]
+\begin{tikzpicture}[yscale=.7,xscale=2]
 \path[draw] (0,0) -- (0,13.5);
 \path[draw] (0,0) -- (5,0);
 \foreach \x/\v in {0/0,1/20,2/40,3/60,4/80,5/100}{
@@ -387,24 +382,12 @@ Another pattern exists among the prefixes of the values. To understand why, look
 \caption[not robust]{Pattern analysis using the Burrows-Wheeler Transform. Each shade represents the number of consecutive repeats in a repeating sequence. \tikz{\fill[black] (0,0) rectangle (.25,.25);} represents sequences longer than 9. \tikz \fill[black!50] (0,0) rectangle (.25,.25); represents sequences of length 5. \tikz \fill[black!10] (0,0) rectangle (.25,.25); represents sequences equal to 1 (non-repeating).}
 \label{fig:pattern}
 \end{figure}
-\ifbwtsec
-\section{Burrows-Wheeler Transform}
-\label{sec:bwt}
-The Burrows-Wheeler Transform is a near one to one transformation of a sequence. To understand how this transformation works we will describe the properties of the transformation with an example.\\
-TODO: example\\
-\indent Before the transformation begins an end-of-line (\$) character is added to the end of the sequence. This is the reason BWT is not quite a one-to-one transformation.\\
-\indent The brute-force way to calculate the BWT is to take every cyclic rotation of the original sequence () and sort these (). The Last element of each sequence creates the new transformed sequence.
-\subsection{Transformation Algorithm}
-You can not create the transformation using the brute force method for large datasets (million of values). We can see
-\subsection{Inverse Transformation Algorithm}
-\fi
+
 \section{Our Approach}
 \label{sec:approach}
-Our approach takes advantage features in section \ref{sec:analysis}. The algorithm compresses with prefix and value compression.
-%
-\subsection{Prefix Compression}
-Many values share common prefixes. fzip uses arithmetic codes to encode these common prefixes.\\
-\indent First fzip creates a large tree to represent all the values in the array. The tree follows the following rules: each node has up to two children. Each edge represent a 1 bit or a 0 bit. Each node also has a weight which represents the number of values with the prefix the node represents. Each node in the tree represents a prefix. The root node represents ``" or no prefix. So the weight of the root node equals the total number of values. The weight of the left (or ``0" bit) child of the root represents the prefix ``0". Its weight represents the number of  values that start with ``0" (all non-negative values). Likewise the right child of the root represents the prefix ``1" and its weight is the number of values starting with 1 (all the negative values).\\
+Our approach takes advantage of the features in Section \ref{sec:analysis}. The algorithm starts with BWT compression, then compresses further with using prefix and value compression.
+\subsection{Burrows-Wheeler Transform Compression}
+\indent After completing the Burrows-Wheeler Transform, fzip uses a simple encoding scheme (\figurename~\ref{fig:bwtStep3}). For each value in the BWT, fzip pushes a `0' or `1' onto a bit array to denote whether the value  equals the previous value. If the values differ (a `0' in the bit array) a second array stores the next value. The 4 datasets (msg\_sppm, num\_plasma, obs\_error, obs\_info) expected to do well from the analysis in \figurename~\ref{fig:bwt} do perform well under this compression scheme (see \figurename~\ref{fig:decomp}).
 \begin{figure}
 \center
 \begin{subfigure}{\linewidth}
@@ -581,20 +564,34 @@ Many values share common prefixes. fzip uses arithmetic codes to encode these co
 \caption{The above 2 figures show the first 8 partition cuts for prefix compression for the example dataset \{0.1, 1.0, 3.0, 5.0, 3.0, 100.0, 4.0, 2.0\}. For simplicity half-precision (16-bit) encoding is used.}
 \label{fig:jiles}
 \end{figure}
-\indent Several properties appear. First, the sum of all the weights of the nodes in any level equals $n$, where $n$ is the total number of values. Moreover the weight of any set of nodes that partitions the root node from the $65^{th}$ level (and does not contain more nodes than necessary to create the partition) equals $n$.\\
+\subsection{Prefix Compression}
+After BWT compression, there exists a new array of values. This array should no longer contain many long pattern sequences. However, patterns still exist among the values themselves. The values either repeat or partially repeat. Specifically, many values share common prefixes. fzip uses arithmetic codes to encode these common prefixes.\\
+\indent To begin with, fzip creates a large tree to represent all the values in the array. \figurename~\ref{fig:tree} shows an example tree for a small dataset. The tree follows the following rules: each node has up to two children. Each edge represents a 1 bit or a 0 bit. Each node in the tree represents a prefix. The root node represents ``" or no prefix. Each node also has a weight, which represents the number of values with the prefix the node represents. So, the weight of the root node equals the total number of values. The weight of the left (or 0 bit) child of the root represents the prefix ``0". Its weight represents the number of  values that start with ``0" (all non-negative values). Likewise, the right child of the root represents the prefix ``1" and its weight is the number of values starting with 1 (all the negative values).\\
+
+\indent Several properties appear. First, the sum of all the weights of the nodes in any level equals $n$, where $n$ is the total number of values. Moreover, the weight of any set of nodes that partitions the root node from the $65^{th}$ level (and does not contain more nodes than necessary to create the partition) equals $n$.\\
 \indent Second, the tree is unbalanced (in our case this is good). Put another way, the datasets contain an unequal number of positive and negative numbers, also any ``normal" dataset would not have an exponential distribution from $2^{-12}$ to $2^{12}$ in such a way to make the rest of the tree balanced.\\
-\indent Tree creation starts with a root node, which has a starting weight of 0. To create the rest of the tree, add each value to the tree in the following way: start by incrementing the weight of the root node. Let us also create a pointer to a ``current node" $c$ and initiate $c$ to the root node. Then with the most significant bit (the sign bit) of the floating point value, update the current node by following the edge that matches this bit. If this edge does not exist create the edge and corresponding node. Then increment the weight of the new current node. This repeats until you reach the $64^{th}$ bit. Then the this process repeats for each value in the dataset.\\ 
-%TODO: make tree construction figure
-\indent fzip calculates the prefix codes by creating a partition in the tree. To start fzip creates a partition with only the root node. Then you include the edge with the largest cut length in the partition. This repeats until a predetermined number of edges become cut by the partition.\\
-\indent Each node added improves the compression because of the following observation: It takes $\textrm{log}_2(k)$ bits to encode $k$ edges in the partition. Take an edge ($a_e$) cut by the partition, which connects to child node $a$. When $a$ gets added to the partition the number of bits in the not encoded stream will decrease by $\textrm{weight}(a)$. However, each code will increases on average by $\frac{1}{k}$ (Each code has $\lceil \textrm{log}_2k \rceil$ bits and removing the ceiling and taking the derivative gets $\frac{1}{k}$). So the codes stream will increase by $\frac{n}{k}$. If you choose $a$ to maximize $\textrm{weight}(a)$ (a greedy algorithm) then $\textrm{weight}(a) > \textrm{average edge cut} > \frac{n}{k}$.\\
-\indent You may notice a problem with this scheme. What if a value that occurs often, say $1.0$ occurs $\%10$ of the time? Ideally you should encode $1.0$ as 4 bits ($\textrm{log}_210$ rounded up), but if we continue to grow the partition beyond cutting 16 edges $1.0$ would encode as more than 4 bits. Our solution freezes the codes once a node from the last ($65^{th}$) level becomes included in the partition. This allows fzip to continue to improve prefix compression by growing the partition and also encode common values with shorter codes. This change makes the encoding variable-length arithmetic encoding.\\
-\indent Of course the overhead to storing all of the codes exists. Currently a 16 byte record describes each code. Each record stores the prefix, the prefix length and the code length. To balance the benefit of prefix encoding with its overhead, we limit the overhead to $\%1$ of the original size of the original array size (after BWT compression).
+\indent Tree creation starts with the root node, which has a starting weight of 0. To create the rest of the tree, add each value to the tree in the following way: Create a pointer to a ``current node" $c$ and initiate $c$ to the root node. Increment the weight of $c$ (the root node). Then, with the most significant bit (the sign bit) of the floating point value, update $c$ by following the edge that matches this bit. If this edge does not exist create the edge and corresponding node. Then, increment the weight of the new $c$. This repeats until you reach the $64^{th}$ bit. Then, the next value gets added to the tree. This continues until the last value gets added to the tree.\\ 
+\indent fzip calculates the prefix codes by creating a partition in the tree. To start, fzip creates a partition with only the root node. Then it includes the edge with the largest cut length in the partition. This repeats until a predetermined number of edges become cut by the partition. Using a list of prefix, prefix code tuples we can represent the encoding scheme of the first 8 partitions of the example in \figurename~\ref{fig:jiles}:\par
+\begin{enumerate}
+    \item (0,)
+    \item (00,0), (01,1)
+    \item (00,0), (010,1)
+    \item (00,00), (0100,01), (0101,10)
+    \item (00,00), (01000,01), (0101,10)
+    \item (00,00), (010000,01), (010001,10), (0101,11)
+    \item (00,000), (0100000,001), (0100001,010), (010001,011), (0101,100)
+    \item (001,000), (0100000,001), (0100001,010), (010001,011), (0101,100)
+\end{enumerate} \par
+Each added node improves the compression because of the following observation: Let the last added node equal $A$. The number of bits in the uncompressed (not-encoded) stream decreases by weight($A$). However, the code lengths have to increase because the partition cut-size ($k$) increases. The code lengths equal $\textrm{log}_2(k)$. So the increase in the code length equals $\textrm{log}_2(k+1)-\textrm{log}_2(k)$ or $\frac{1}{k}$ by using derivatives. So the codes stream will increase by $\frac{n}{k}$, where $n$ equals to number of values in the data set. If you choose $A$ to maximize $\textrm{weight}(A)$ (a greedy algorithm) then $\textrm{weight}(A) > \textrm{average edge cut} > \frac{n}{k}$. Therefore, the total size of the prefix compression, excluding overhead, keeps improving as the partition increases.\\
+\indent But, what if a value occurs often? Say the value $1.0$ occurs $10\%$ of the time? Ideally you should encode $1.0$ as 4 bits ($\textrm{log}_210$ rounded up), but if we continue to grow the partition beyond cutting 16 edges $1.0$ would encode as more than 4 bits. Our solution freezes the codes once a node from the last ($65^{th}$) level becomes included in the partition. This allows fzip to continue to improve prefix compression by growing the partition and also encode common values with shorter codes. This change makes the encoding to variable-length arithmetic encoding.\\
+\indent Of course, the overhead to store all of the codes exists. Currently, a 16 byte record describes each code. Each record stores the prefix, the prefix length and the code length. To balance the benefit of prefix encoding with its overhead, we limit the overhead to $1\%$ of the original array size.
 \subsection{Repeated Value Extension}
-Prefix compression does not compress all of the repeated values. So fzip extends prefix compression to specifically include all repeated values. Again explaining why repeated values compress well: All of the datasets have less than 37 million values. An index of 26 bits can address the entire dataset. Even if a value repeats only once (occurs twice) there still exists an advantage to store the repeated values in a repeated value array and store the indexes into this array instead of the original values. In the previous example $26+26+64<64+64$ (2 indices plus the value in the array equals less than storing 2 values).\\
-\indent We add additional codes to the prefix codes to encode these repeats. To make room for the additional codes we increase the original code lengths by up to 1 bit each. This seems like a small trade off to make. To reduce overhead, the repeats only encode as 8 bytes (not 16 like the prefix codes), because fzip makes all the codes the same length for repeat compression.
+Prefix compression does not compress all of the repeated values. So, fzip extends prefix compression to specifically include all repeated values. Again explaining why repeated values compress well: All of the datasets have less than 37 million values. An index of 26 bits can address the entire dataset. Even if a value repeats only once (occurs twice) there still exists an advantage to store the repeated values in a repeated value array and store the indexes into this array instead of the original values. In the previous example $26+26+64<64+64$ (2 indices plus the value in the array equals less than storing 2 values).\\
+\indent To encode these repeats, we expanded the set of prefix codes. This increases the original code lengths by up to one bit. This seemed like a small trade off to make. All the repeats have the same length (64-bits) and the same code length so we can encode each as 8 bytes, instead of the 16 used for the prefixes.
+
 \begin{figure}
 \center
-\begin{tikzpicture}[xscale=1.1,yscale=1]
+\begin{tikzpicture}[xscale=2,yscale=1.2]
 \path[draw] (0,.5) -- (0,14.5);
 \path[draw, -stealth] (0,.5) -- (6,.5);
 \foreach \x in {0,1,...,5}{
@@ -706,7 +703,7 @@ Prefix compression does not compress all of the repeated values. So fzip extends
 \end{figure}
 \begin{figure}
 \center
-\begin{tikzpicture}[xscale=1.7]
+\begin{tikzpicture}[xscale=3, yscale=1.2]
 \path[draw, -stealth] (0,.5) -- (3.5,.5);
 \path[draw] (0,.5) -- (0,14.5);
 \foreach \x in {0,1,...,3}{
@@ -719,7 +716,7 @@ Prefix compression does not compress all of the repeated values. So fzip extends
     \node[anchor=north] at (\x,.4){\yscale};
 }
 
-\node[rotate=90] at (-1,6) {Data Sets};
+\node[rotate=90] at (-1.2,5.5) {Data Sets};
 \node at (2,-.3) {Compressed Values per Second};
 
 \foreach \y/\x in {1/2.81,2/2.92,3/2.91,4/3.16,5/2.80,6/2.65,7/2.67,8/2.88,9/2.94,10/2.99,11/3.07,12/2.90,13/2.85,14/2.91}{
@@ -792,13 +789,12 @@ Prefix compression does not compress all of the repeated values. So fzip extends
 \node[black!25,anchor=west] at (2.9,13.7){814K};
 \node[black!70,anchor=west] at (3.1,13.9){1.2M};
 \normalsize
-\node[draw,rotate=90] at (-1,10){\tikz \draw[fill=black!25] (.1,.1) rectangle (.3,.3); gzip -9 \tikz \draw[fill=black!70] (.1,.1) rectangle (.3,.3); FPC 25 \tikz \draw[fill=black!50] (.1,.1) rectangle (.3,.3); bzip -9 \tikz \draw[fill=black] (.1,.1) rectangle (.3,.3); fzip};
+\node[draw,rotate=90] at (-1.2,10){\tikz \draw[fill=black!25] (.1,.1) rectangle (.3,.3); gzip -9 \tikz \draw[fill=black!70] (.1,.1) rectangle (.3,.3); FPC 25 \tikz \draw[fill=black!50] (.1,.1) rectangle (.3,.3); bzip -9 \tikz \draw[fill=black] (.1,.1) rectangle (.3,.3); fzip};
 \end{tikzpicture}
 \caption{The above compression runtime analysis shows that fzip has some improvement to make to compete with other program's runtime.}
 \label{fig:runtime}
 \end{figure}
 
-\par We did develop Burrows-Wheeler transform compression for fzip, however we do not see this compression as hardware ameanable. Our current ideas for taking advantage of repeating patterns include a history table or a hash table.
+\par We did develop Burrows-Wheeler transform compression for fzip, however we do not see this compression as hardware amenable. Our current ideas for taking advantage of repeating patterns include a history table or a hash table.
 \section{Disscussion}
 We use fzip's results to get an idea of performance. We currently don't have the hardware ameanable version of fzip ready.
-\par We also plan to switch the dataset from FPC's datasets to the matrix datasets.

@@ -6,7 +6,7 @@
 \clip (-5,-2.5) rectangle (5,2.5);
 \node at (0,0) [draw, rectangle, minimum height=4cm, minimum width=8cm, label={[label distance=-.6cm,xshift=-2cm]90:Multiply-Accumulator}](acc){};
 \node at (acc) [draw, rectangle, xshift=3cm, yshift=0cm, minimum height=1cm, minimum width=2cm](add){Adder};
-\node at (acc) [draw, rectangle, xshift=.2cm, yshift=0cm, minimum height=1cm, minimum width=0](int){\shortstack{Intermediator}};
+\node at (acc) [draw, rectangle, xshift=.3cm, yshift=0cm, minimum height=1cm, minimum width=0](int){\shortstack{Intermediator}};
 \node at (acc) [draw, rectangle, xshift=-3cm, yshift=0cm, minimum height=1cm, minimum width=2cm](mult){\shortstack{Multiplier}};
 
 \path [draw, thick, >=stealth',->] (-5,.3) --node[ fill=white, inner sep=1pt]{val} (-4,.3) ;
@@ -37,15 +37,14 @@
 \caption{The no-stall multiply-accumulator block handles multiple intermediate values at a time. This allows multiple intermediate values in the adder pipeline.}
 \label{mac}
 \end{figure}
-A high throughput SpMV implementation relies on designing a no-stall multiply accumulator (MAC). An inefficient engine stalls when a matrix and associated vector value pair arrives every or nearly every clock cycle. The long latency of floating point addition makes this hard. To solve this our approach works on multiple intermediate $y$ vector values and does the additions out of order. For example in computing $1+2+3+4$ the MAC does $(1+2)+(3+4)$. This removes the data dependency of adding $1$ and $2$ before processing $3$. CPUs and GPUs compute floating point addition in order (eg. $((1+2)+3)+4$). This means results may differ slightly, because changing the order of floating point addition can change the result \cite{Goldberg:1991:CSK:103162.103163}.\\
-\indent In $R^3$ \cite{prelim:townsend0} we designed a block called an Intermediator (Section \ref{sec:intermediator}) capable of storing 32 intermediate $y$ vector values. In our next design we indend to expand this to 1024 (the depth of one dual port BlockRAM in most Xilinx chips). Both designs have an interesting side effect that the allow the matrix to be traversed in a loosely row major traversal and the MAC will still work correctly. The step to from 32 to 1024 intermediate values allows more freedom in the traversal. The rest of the chapter discusses the new design. The matrix elements in one set of 512 rows can be traversed in any way just as long as all the elements are traversed before going to the next 512 rows. Later in chapter 5 we discuss traversals that abide by this rule and allow for easy reuse of $x$ vector values. We plan to use a traversal we called row column row (RCR) traversal.
-\subsection{Intermediator}
+A high throughput SpMV implementation relies on designing a no-stall multiply accumulator (MAC). An inefficient engine stalls when a matrix and its associated vector value arrives every or nearly every clock cycle. The long latency of floating point addition makes this hard. To solve this, our approach works on multiple intermediate $y$ vector values and does the additions out of order. For example in computing $1+2+3+4$ the MAC does $(1+2)+(3+4)$. This removes the data dependency of adding $1$ and $2$ before processing $3$. CPUs and GPUs compute floating point addition in order (eg. $((1+2)+3)+4$). This means results may differ slightly, because changing the order of floating point addition can change the result [\cite{prelim:goldberg}].\\
+\indent In $R^3$ [\cite{prelim:townsend}] we designed a block called an Intermediator (Section \ref{sec:intermediator}) capable of storing 32 intermediate $y$ vector values. In our next design we intend to expand this to 1024 (the depth of one dual port BlockRAM in most Xilinx chips). Both designs have an interesting side effect that the allow the matrix to be traversed in a loosely row major traversal and the MAC will still work correctly. The step to from 32 to 1024 intermediate values allows more freedom in the traversal. The rest of the chapter discusses the new design. The matrix elements in one set of 512 rows can be traversed in any way just as long as all the elements are traversed before going to the next 512 rows. Later in chapter 5 we discuss traversals that abide by this rule and allow for easy reuse of $x$ vector values. We plan to use a traversal that follows this rule called row column row (RCR) traversal.
+\section{Intermediator}
 \label{sec:intermediator}
-We call the component that handles the intermediate $y$ values the intermediator. The Intermediator (Figure \ref{intermediatorEx}) takes in two values, one from the multiplier's result and one from the adder's result and outputs a pair of values to be added. The dual-port Block RAM (middle block in Figure \ref{intermediatorEx}) stores intermediate values until an element in the same row appears. 
-\\\indent
-For most matrices, the Block RAM cannot store the entire intermediate $y$ vector. Also the control logic needs to remember the state of each slot in RAM (empty or full). Remembering the state of each RAM location and updating that state requires complicated logic. In $R^3$ we approach this problem by limiting the number of active intermediate values to 32. In our new design we will use a distributed RAM with width of 1 bit to keep track of the state of each slot. Since distributed RAM only has 1 write port we need to do something clever. The first option would be to double the frequency of the distributed RAM to achieve two writes every clock cycle. The second option is to create a dual port RAM with Banking. Banking is disscussed in chapter 9.
-\par The memory has four states with we call the red, yellow, green and white states. The memory is partitioned into 2 parts an upper and lower part. Once the accumulation starts one of these parts will be in the red active state. Once the incoming values move to the next 512 row section of the matrix the active state transitions to the yellow fading state, and the other half of the memory is now in the active state. Recall our traversal rule is that each 512 rows must be traversed before proceeding to the next 512 rows. The yellow fading state exists because values are still be accumulated in the previously active memory. The memory will always be accumulated in 80 clock cycles. At that point the faded state transitions to the green ``read to store" state. Once the values have been sent out to be stored the memory transitions to the white idle state.
-\par To understand why 80 cycle cycles are needed to ensure the accumulation has finished after no new values arrive from the multiplier, let us look at the worst case. Only inputs from the adder correspond with to the elements in the fading window. So, the theoretical worst case occurs with a full adder pipeline and each value corresponds to the same row. Every 16 cycles (the adder pipeline length) the number of elements with the same row in the pipeline cuts in half. Therefore the worst case would take 80 ($(log_2(16) + 1) \times 16$) clock cycles to guarantee that the fading window only has final $y$ vector values. The worst case would also advance the window in 16 clock cycles (1 element per row in the matrix for those 16 rows corresponding to the active window). So in theory the MAC could stall, but in practice this never happens.
+The Intermediator (Figure \ref{intermediatorEx}) takes in two values, one from the multiplier's result and one from the adder's result and outputs a pair of values to be added. The dual-port Block RAM (middle block in Figure \ref{intermediatorEx}) stores intermediate values until an element in the same row appears. \par
+For most matrices, the Block RAM cannot store the entire intermediate $y$ vector. Also the control logic needs to remember the state of each slot in RAM (empty or full). Remembering the state of each RAM location and updating that state requires complicated logic. In $R^3$ we approach this problem by limiting the number of active intermediate values to 32. In our new design we will use a distributed RAM with width of 1 bit to keep track of the state of each slot. Since distributed RAM only has 1 write port we need to do something clever. The first option would be to multi-pump the distributed RAM to achieve two writes every clock cycle. The second option is to create a dual port RAM with Banking. Banking is discussed in chapter 9. The third option is to use 4 RAM blocks and clever use of XORs.
+\par The memory has four states with we call the red, yellow, green and white states. The memory is partitioned into 2 parts an upper and lower part. Once the accumulation starts one of these parts will be in the red active state. Once the incoming values move to the next 512 row section of the matrix the active state transitions to the yellow fading state, and the other half of the memory is now in the active state. Recall our traversal rule is that each 512 rows must be traversed before proceeding to the next 512 rows. The yellow fading state exists because values are still being accumulated in the previously active memory. The memory will always be accumulated in 80 clock cycles. At that point the faded state transitions to the green ``read to store" state. Once the values have been sent out to be stored the memory transitions to the white idle state.
+\par To understand why 80 cycle cycles are needed to ensure the accumulation has finished after no new values arrive from the multiplier, let us look at the worst case. Only inputs from the adder correspond with to the elements in the fading window. So, the theoretical worst case occurs with a full adder pipeline and each value corresponds to the same row. Every 16 cycles (the adder pipeline length) the number of elements with the same row in the pipeline cuts in half. Therefore the worst case would take 80 ($(log_2(16) + 1) \times 16$) clock cycles to guarantee that the fading window only has final $y$ vector values. The worst case would also advance the window in 512 clock cycles (1 element per row in the matrix for those 512 rows corresponding to the active window). It also takes 512 cycles to store the green "ready to store" elements. So in theory the MAC could stall, but in practice this never happens.
 \par Many cases occur when accumulating values in multiple rows and the Intermediator handles each case properly:
 \\\indent Case 1: (Figure \ref{cycle7}) The trivial case, no valid input arrives. If the ``to result" block has values, it outputs a value. An overflow FIFO (explained in case 6) outputs a value if it has values.
 \\\indent Case 2: (Figure \ref{cycle4}) Only one value arrives (valid) and the row corresponds to an empty cell. The value goes into the empty cell. If the ``to result" window has values, it outputs a result, and if the FIFO has values it outputs a set to the adder.
@@ -315,12 +314,390 @@ For most matrices, the Block RAM cannot store the entire intermediate $y$ vector
 \caption{Eighth clock cycle, the 2 inputs correspond to empty cells in the Block RAM.}
 \label{cycle8}
 \end{subfigure}
+\begin{subfigure}{\linewidth}
+\centering
+\begin{tikzpicture}
+\node (a) {Input};
+\node (b)[below=of a] {Result};
+\node (c)[right=of a,xshift=-.6cm,yshift=.2cm] {RAM};
+\draw (c) +(-.5,0.2) rectangle ++(.5,-2.2);
+\node (d)[xshift=-.7cm,yshift=-.5cm,right=of c, draw, minimum width=1.5cm, minimum height=.5cm, label=above:FIFO]{};
+\node (e)[below=of d, yshift=.3cm]{Adder};
+%\node (f) at ([yshift=-2cm]c) [draw,minimum width=1.5cm]{};
+%\coordinate (s16) at ($ (c) - (.5,0) $);
+%\draw (s16) rectangle ++(.5,.5);
+\foreach [count=\i] \y in {-1.85,-1.6,...,-.1}{
+	\node (n\i) at ([xshift=-0cm,yshift=-.2cm+\y cm]c) [minimum height=.25cm, minimum width=1cm]{};
+}
+%\node (active) at ([xshift=.7cm,yshift=0cm]n5) [draw,fill=red!30,rectangle,minimum width=1cm,minimum height=.25cm]{};
+\draw[fill=red] ([xshift=-.5cm,yshift=-.125cm]n1) rectangle ([xshift=.5cm,yshift=.125cm]n4);
+\draw[fill=yellow] ([xshift=-.5cm,yshift=-.125cm]n5) rectangle ([xshift=.5cm,yshift=.125cm]n8);
+\draw[pattern=north east lines] ([xshift=-.5cm,yshift=-.125cm]n5) rectangle ([xshift=.5cm,yshift=.125cm]n6);
+\draw[pattern=north east lines] ([xshift=-.5cm,yshift=-.125cm]n8) rectangle ([xshift=.5cm,yshift=.125cm]n8);
+\draw[pattern=north east lines] ([xshift=-.5cm,yshift=-.125cm]n1) rectangle ([xshift=.5cm,yshift=.125cm]n1);
+\foreach [count=\i] \y in {-1.85,-1.6,...,-.1}{
+	\node (m\i) at ([xshift=-0.2cm,yshift=-.2cm+\y cm]c) []{\scriptsize \i};
+}
+
+%\path [draw, thick, >=stealth',->](a) to [bend left=0] (n8.west);
+%\path [draw, thick, >=stealth',->](a) to [bend right=10] (n1.west);
+\end{tikzpicture}
+\caption{Eighth clock cycle, the 2 inputs correspond to empty cells in the Block RAM.}
+\label{cycle8}
+\end{subfigure}
 \end{multicols}
 
-\caption{This shows a simple example of the Intermediator running for 8 clock cycles. For demonstration, the size of the RAM is 8 instead of 1024.}
+\caption{This shows a simple example of the Intermediator running for 9 clock cycles. For demonstration, the size of the RAM is 8 instead of 1024.}
 \label{intermediatorEx}
 \end{figure*}
 %
 \indent
 To help explain, consider a simpler case where the depth of the intermediator is 8 instead of 1024. Figure \ref{intermediatorEx} shows 8 clock cycles of operation. At every clock cycle up to 2 valid input values with corresponding row indexes arrive. For simplicity we do not show the values being calculated in the figure.
-\par We should consider the possibility that the windows could advance before all the final values reach the fading window. If this does not happen then the MAC has to stall or else incorrect values would occur in the result. Again we can do a worse case analysis. Wo assume each row has at leas one value. In our opinion preprocessing matrices to either remove empty rows or add explicit zeros is fair. Our worst case would be if all teh rows only had 1 value. This means the active memory would be active for 512 cycles but storing the previous values would take 512+80 cycles. However the worst case stall would decrease throughput by 80/512 (10\%). This worst case behavior does not occur in practice.
+\par We should consider the possibility that the windows could advance before all the final values reach the fading window. If this does not happen then the MAC has to stall or else incorrect values would occur in the result. Again we can do a worse case analysis. We assume each row has at least one value. In our opinion preprocessing matrices to either remove empty rows or add explicit zeros is fair. Our worst case would be if all the rows only had 1 value. This means the active memory would be active for 512 cycles but storing the previous values would take 512+80 cycles. However the worst case stall would decrease throughput by 80/512 (16\%). This worst case behavior does not occur in practice.
+%\section{Four RAM Blocks and Clever use of XOR}
+\section{A Dual Port 1$\times$1024 RAM with Zero Clock Cycle Latency}
+This trick is essentially a special case of \cite{}. This requires the use of pseudo dual port distributed RAMs. Before looking at the implementation let us look at the target behavior. During an intermidiator status request the bit of  the requested address will always flip. (Empty cells become full and full cells become empty.) This flip occurs after the correct status is reported.\par
+FPGA vendors do not provide dual port distributed RAMs. Instead, they provide pseudo dual port distributed RAMs. That is RAMs with one read port and one write port. \par
+With a clever arragement of 4 pseudo dual port RAMs we can emulate one dual port RAM. To begin with, arrange the RAMs in a $2\times 2$ grid. The write ports of the 2 RAMs in each row are connected together. The read ports of the 2 RAMs in each column are connected by an XOR gate. The address on port 1 controls the address of the write port of the bottom row of RAMs. The address on port 1 also controls the address of the read ports of the left column of RAMs. Similarly, the address on port 2 controls the address of the write ports of the top row of RAMs. The address on port 2 also controls the address of the read ports of the right column of RAMs.\par
+%Since the RAMs on the diagonal RAM$_{1,1}$ and RAM$_{2,2}$ have 
+This may make more sense with the example in \figurename~\ref{fig:xorram}.
+\begin{figure}
+    \begin{subfigure}{.5\linewidth}
+        \begin{tikzpicture}[scale=3]
+            \scriptsize
+            \draw[] (.5,2-.25) -- (1,2-.25) -- (.5,2.25) -- (0, 2.25) -- cycle;
+            \foreach \j in {-.15,-.05, .05, .15}{
+                \draw[] (.25-\j, 2+\j) -- (.75-\j,2+\j);
+            }
+            \foreach \i/\v in {0/0,1/0,2/0,3/0,4/0}{
+                \FPeval{\x}{.7-\i*.1};
+                \FPeval{\y}{2-.2+\i*.1};
+                \node[] at (\x,\y) {\v};
+            }
+            \node at (.25,2.25)[anchor=south]{RAM$_{emulated}$};
+            \foreach \xram in {0,1}{
+                \node at (\xram-.5,.25) [anchor=south]{RAM$_{\xram,0}$};
+                \draw[xshift=\xram cm] (0,-.25) -- (.5,-.25) -- (0,.25) -- (-.5, .25) -- cycle;
+                \foreach \j in {-.15,-.05, .05, .15}{
+                    \draw[xshift=\xram cm] (-.25-\j, \j) -- (.25-\j,\j);
+                }
+                \def\y{0};
+                \foreach \i/\v in {0/0,1/0,2/0,3/0,4/0}{
+                    \FPeval{\x}{.2-\i*.1};
+                    \FPeval{\y}{0-.2+\i*.1};
+                    \node[] at (\x+\xram,\y) {\v};
+                }
+            }
+            \foreach \xram in {0,1}{
+                \node at (\xram-.5,1.25) [anchor=south]{RAM$_{\xram,1}$};
+                \draw[xshift=\xram cm,yshift=1cm] (0,-.25) -- (.5,-.25) -- (0,.25) -- (-.5, .25) -- cycle;
+                \foreach \j in {-.15,-.05, .05, .15}{
+                    \draw[xshift=\xram cm,yshift=1cm] (-.25-\j, \j) -- (.25-\j,\j);
+                }
+                \def\y{0};
+                \foreach \i/\v in {0/0,1/0,2/0,3/0,4/0}{
+                    \FPeval{\x}{.2-\i*.1};
+                    \FPeval{\y}{0-.2+\i*.1};
+                    \node[] at (\x+\xram,\y+1) {\v};
+                }
+            }
+            \node at (-.8,0)[rotate=90]{PORT 1};
+            \node at (-.8,1)[rotate=90]{PORT 2};
+            \node at (0,-.6){PORT 1};
+            \node at (1,-.6){PORT 2};
+            %TODO first and second
+            \def\first{1};
+            \ifthenelse{\first>0}{
+            \draw[dashed] (-.7,0-.25+\first*.1) -- (1.5,0-.25+\first*.1);
+            \draw[dashed] (-.7,0-.15+\first*.1) -- (1.5,0-.15+\first*.1);
+            \draw[dashed] (0+.25-\first*.1,1.25) -- (0+.25-\first*.1,-.5);
+            \draw[dashed] (0+.15-\first*.1,1.25) -- (0+.15-\first*.1,-.5);
+            \node[rotate=270] at (0.2-\first*.1,-.4) {$\Rightarrow0$};
+            \node at (0.2-\first*.1,.5) {$\oplus$};
+            \node at (-.6,-.2+\first*.1) {flip};
+        }{}
+            \def\second{3};
+            \ifthenelse{\second>0}{
+            \draw[dashed] (-.7,1-.25+\second*.1) -- (1.5,1-.25+\second*.1);
+            \draw[dashed] (-.7,1-.15+\second*.1) -- (1.5,1-.15+\second*.1);
+            \draw[dashed] (1+.25-\second*.1,1.25) -- (1+.25-\second*.1,-.5);
+            \draw[dashed] (1+.15-\second*.1,1.25) -- (1+.15-\second*.1,-.5);
+            \node[rotate=270] at (1.2-\second*.1,-.4) {$\Rightarrow0$};
+            \node at (1.2-\second*.1,.5) {$\oplus$};
+            \node at (-.6,.8+\second*.1) {flip};
+        }{}
+            \ifthenelse{\first>0}{
+            \draw[dashed] (-.2,2-.25+\first*.1) -- (1.3,2-.25+\first*.1);
+            \draw[dashed] (-.2,2-.15+\first*.1) -- (1.3,2-.15+\first*.1);
+            \node at (-.6,2-.2+\first*.1) {PORT 1};
+            \node at (-.1,2-.2+\first*.1) {flip};
+            \node at (1.1,2-.2+\first*.1) {$\Rightarrow0$};
+
+        }{}
+            \ifthenelse{\second>0}{
+            \draw[dashed] (-.2,2-.25+\second*.1) -- (1.3,2-.25+\second*.1);
+            \draw[dashed] (-.2,2-.15+\second*.1) -- (1.3,2-.15+\second*.1);
+            \node at (-.6,2-.2+\second*.1) {PORT 2};
+            \node at (-.1,2-.2+\second*.1) {flip};
+            \node at (1.1,2-.2+\second*.1) {$\Rightarrow0$};
+        }{}
+
+        \end{tikzpicture}
+        \caption{Clock Cycle}
+        \label{fig:xorram0}
+    \end{subfigure}
+    \begin{subfigure}{.5\linewidth}
+        \begin{tikzpicture}[scale=3]
+            \scriptsize
+            \draw[] (.5,2-.25) -- (1,2-.25) -- (.5,2.25) -- (0, 2.25) -- cycle;
+            \foreach \j in {-.15,-.05, .05, .15}{
+                \draw[] (.25-\j, 2+\j) -- (.75-\j,2+\j);
+            }
+            \foreach \i/\v in {0/0,1/1,2/0,3/1,4/0}{
+                \FPeval{\x}{.7-\i*.1};
+                \FPeval{\y}{2-.2+\i*.1};
+                \node[] at (\x,\y) {\v};
+            }
+            \node at (.25,2.25)[anchor=south]{RAM$_{emulated}$};
+            \foreach \xram in {0,1}{
+                \node at (\xram-.5,.25) [anchor=south]{RAM$_{\xram,0}$};
+                \draw[xshift=\xram cm] (0,-.25) -- (.5,-.25) -- (0,.25) -- (-.5, .25) -- cycle;
+                \foreach \j in {-.15,-.05, .05, .15}{
+                    \draw[xshift=\xram cm] (-.25-\j, \j) -- (.25-\j,\j);
+                }
+                \def\y{0};
+                \foreach \i/\v in {0/0,1/1,2/0,3/0,4/0}{
+                    \FPeval{\x}{.2-\i*.1};
+                    \FPeval{\y}{0-.2+\i*.1};
+                    \node[] at (\x+\xram,\y) {\v};
+                }
+            }
+            \foreach \xram in {0,1}{
+                \node at (\xram-.5,1.25) [anchor=south]{RAM$_{\xram,1}$};
+                \draw[xshift=\xram cm,yshift=1cm] (0,-.25) -- (.5,-.25) -- (0,.25) -- (-.5, .25) -- cycle;
+                \foreach \j in {-.15,-.05, .05, .15}{
+                    \draw[xshift=\xram cm,yshift=1cm] (-.25-\j, \j) -- (.25-\j,\j);
+                }
+                \def\y{0};
+                \foreach \i/\v in {0/0,1/0,2/0,3/1,4/0}{
+                    \FPeval{\x}{.2-\i*.1};
+                    \FPeval{\y}{0-.2+\i*.1};
+                    \node[] at (\x+\xram,\y+1) {\v};
+                }
+            }
+            \node at (-.8,0)[rotate=90]{PORT 1};
+            \node at (-.8,1)[rotate=90]{PORT 2};
+            \node at (0,-.6){PORT 1};
+            \node at (1,-.6){PORT 2};
+            %TODO first and second
+            \def\first{-1};
+            \ifthenelse{\first>0}{
+            \draw[dashed] (-.7,0-.25+\first*.1) -- (1.5,0-.25+\first*.1);
+            \draw[dashed] (-.7,0-.15+\first*.1) -- (1.5,0-.15+\first*.1);
+            \draw[dashed] (0+.25-\first*.1,1.25) -- (0+.25-\first*.1,-.5);
+            \draw[dashed] (0+.15-\first*.1,1.25) -- (0+.15-\first*.1,-.5);
+            \node[rotate=270] at (0.2-\first*.1,-.4) {$\Rightarrow 0$};
+            \node at (0.2-\first*.1,.5) {$\oplus$};
+            \node at (-.6,-.2+\first*.1) {flip};
+        }{}
+            \def\second{1};
+            \ifthenelse{\second>0}{
+            \draw[dashed] (-.7,1-.25+\second*.1) -- (1.5,1-.25+\second*.1);
+            \draw[dashed] (-.7,1-.15+\second*.1) -- (1.5,1-.15+\second*.1);
+            \draw[dashed] (1+.25-\second*.1,1.25) -- (1+.25-\second*.1,-.5);
+            \draw[dashed] (1+.15-\second*.1,1.25) -- (1+.15-\second*.1,-.5);
+            \node[rotate=270] at (1.2-\second*.1,-.4) {$\Rightarrow 1$};
+            \node at (1.2-\second*.1,.5) {$\oplus$};
+            \node at (-.6,.8+\second*.1) {flip};
+        }{}
+            \ifthenelse{\first>0}{
+            \draw[dashed] (-.2,2-.25+\first*.1) -- (1.3,2-.25+\first*.1);
+            \draw[dashed] (-.2,2-.15+\first*.1) -- (1.3,2-.15+\first*.1);
+            \node at (-.6,2-.2+\first*.1) {PORT 1};
+            \node at (-.1,2-.2+\first*.1) {flip};
+            \node at (1.1,2-.2+\first*.1) {$\Rightarrow 0$};
+
+        }{}
+            \ifthenelse{\second>0}{
+            \draw[dashed] (-.2,2-.25+\second*.1) -- (1.3,2-.25+\second*.1);
+            \draw[dashed] (-.2,2-.15+\second*.1) -- (1.3,2-.15+\second*.1);
+            \node at (-.6,2-.2+\second*.1) {PORT 2};
+            \node at (-.1,2-.2+\second*.1) {flip};
+            \node at (1.1,2-.2+\second*.1) {$\Rightarrow 1$};
+        }{}
+
+        \end{tikzpicture}
+        \caption{Clock Cycle}
+        \label{fig:xorram1}
+    \end{subfigure}
+    \begin{subfigure}{.5\linewidth}
+        \begin{tikzpicture}[scale=3]
+            \scriptsize
+            \draw[] (.5,2-.25) -- (1,2-.25) -- (.5,2.25) -- (0, 2.25) -- cycle;
+            \foreach \j in {-.15,-.05, .05, .15}{
+                \draw[] (.25-\j, 2+\j) -- (.75-\j,2+\j);
+            }
+            \foreach \i/\v in {0/0,1/0,2/0,3/1,4/0}{
+                \FPeval{\x}{.7-\i*.1};
+                \FPeval{\y}{2-.2+\i*.1};
+                \node[] at (\x,\y) {\v};
+            }
+            \node at (.25,2.25)[anchor=south]{RAM$_{emulated}$};
+            \foreach \xram in {0,1}{
+                \node at (\xram-.5,.25) [anchor=south]{RAM$_{\xram,0}$};
+                \draw[xshift=\xram cm] (0,-.25) -- (.5,-.25) -- (0,.25) -- (-.5, .25) -- cycle;
+                \foreach \j in {-.15,-.05, .05, .15}{
+                    \draw[xshift=\xram cm] (-.25-\j, \j) -- (.25-\j,\j);
+                }
+                \def\y{0};
+                \foreach \i/\v in {0/0,1/1,2/0,3/0,4/0}{
+                    \FPeval{\x}{.2-\i*.1};
+                    \FPeval{\y}{0-.2+\i*.1};
+                    \node[] at (\x+\xram,\y) {\v};
+                }
+            }
+            \foreach \xram in {0,1}{
+                \node at (\xram-.5,1.25) [anchor=south]{RAM$_{\xram,1}$};
+                \draw[xshift=\xram cm,yshift=1cm] (0,-.25) -- (.5,-.25) -- (0,.25) -- (-.5, .25) -- cycle;
+                \foreach \j in {-.15,-.05, .05, .15}{
+                    \draw[xshift=\xram cm,yshift=1cm] (-.25-\j, \j) -- (.25-\j,\j);
+                }
+                \def\y{0};
+                \foreach \i/\v in {0/0,1/1,2/0,3/1,4/0}{
+                    \FPeval{\x}{.2-\i*.1};
+                    \FPeval{\y}{0-.2+\i*.1};
+                    \node[] at (\x+\xram,\y+1) {\v};
+                }
+            }
+            \node at (-.8,0)[rotate=90]{PORT 1};
+            \node at (-.8,1)[rotate=90]{PORT 2};
+            \node at (0,-.6){PORT 1};
+            \node at (1,-.6){PORT 2};
+            %TODO first and second
+            \def\first{0};
+            \ifthenelse{\first>-1}{
+            \draw[dashed] (-.7,0-.25+\first*.1) -- (1.5,0-.25+\first*.1);
+            \draw[dashed] (-.7,0-.15+\first*.1) -- (1.5,0-.15+\first*.1);
+            \draw[dashed] (0+.25-\first*.1,1.25) -- (0+.25-\first*.1,-.5);
+            \draw[dashed] (0+.15-\first*.1,1.25) -- (0+.15-\first*.1,-.5);
+            \node[rotate=270] at (0.2-\first*.1,-.4) {$\Rightarrow 0$};
+            \node at (0.2-\first*.1,.5) {$\oplus$};
+            \node at (-.6,-.2+\first*.1) {flip};
+        }{}
+            \def\second{-3};
+            \ifthenelse{\second>0}{
+            \draw[dashed] (-.7,1-.25+\second*.1) -- (1.5,1-.25+\second*.1);
+            \draw[dashed] (-.7,1-.15+\second*.1) -- (1.5,1-.15+\second*.1);
+            \draw[dashed] (1+.25-\second*.1,1.25) -- (1+.25-\second*.1,-.5);
+            \draw[dashed] (1+.15-\second*.1,1.25) -- (1+.15-\second*.1,-.5);
+            \node[rotate=270] at (1.2-\second*.1,-.4) {$\Rightarrow 0$};
+            \node at (1.2-\second*.1,.5) {$\oplus$};
+            \node at (-.6,.8+\second*.1) {flip};
+        }{}
+            \ifthenelse{\first>-1}{
+            \draw[dashed] (-.2,2-.25+\first*.1) -- (1.3,2-.25+\first*.1);
+            \draw[dashed] (-.2,2-.15+\first*.1) -- (1.3,2-.15+\first*.1);
+            \node at (-.6,2-.2+\first*.1) {PORT 1};
+            \node at (-.1,2-.2+\first*.1) {flip};
+            \node at (1.1,2-.2+\first*.1) {$\Rightarrow 0$};
+
+        }{}
+            \ifthenelse{\second>0}{
+            \draw[dashed] (-.2,2-.25+\second*.1) -- (1.3,2-.25+\second*.1);
+            \draw[dashed] (-.2,2-.15+\second*.1) -- (1.3,2-.15+\second*.1);
+            \node at (-.6,2-.2+\second*.1) {PORT 2};
+            \node at (-.1,2-.2+\second*.1) {flip};
+            \node at (1.1,2-.2+\second*.1) {$\Rightarrow 0$};
+        }{}
+
+        \end{tikzpicture}
+        \caption{Clock Cycle}
+        \label{fig:xorram2}
+    \end{subfigure}
+    \begin{subfigure}{.5\linewidth}
+        \begin{tikzpicture}[scale=3]
+            \scriptsize
+            \draw[] (.5,2-.25) -- (1,2-.25) -- (.5,2.25) -- (0, 2.25) -- cycle;
+            \foreach \j in {-.15,-.05, .05, .15}{
+                \draw[] (.25-\j, 2+\j) -- (.75-\j,2+\j);
+            }
+            \foreach \i/\v in {0/1,1/0,2/0,3/1,4/0}{
+                \FPeval{\x}{.7-\i*.1};
+                \FPeval{\y}{2-.2+\i*.1};
+                \node[] at (\x,\y) {\v};
+            }
+            \node at (.25,2.25)[anchor=south]{RAM$_{emulated}$};
+            \foreach \xram in {0,1}{
+                \node at (\xram-.5,.25) [anchor=south]{RAM$_{\xram,0}$};
+                \draw[xshift=\xram cm] (0,-.25) -- (.5,-.25) -- (0,.25) -- (-.5, .25) -- cycle;
+                \foreach \j in {-.15,-.05, .05, .15}{
+                    \draw[xshift=\xram cm] (-.25-\j, \j) -- (.25-\j,\j);
+                }
+                \def\y{0};
+                \foreach \i/\v in {0/1,1/1,2/0,3/0,4/0}{
+                    \FPeval{\x}{.2-\i*.1};
+                    \FPeval{\y}{0-.2+\i*.1};
+                    \node[] at (\x+\xram,\y) {\v};
+                }
+            }
+            \foreach \xram in {0,1}{
+                \node at (\xram-.5,1.25) [anchor=south]{RAM$_{\xram,1}$};
+                \draw[xshift=\xram cm,yshift=1cm] (0,-.25) -- (.5,-.25) -- (0,.25) -- (-.5, .25) -- cycle;
+                \foreach \j in {-.15,-.05, .05, .15}{
+                    \draw[xshift=\xram cm,yshift=1cm] (-.25-\j, \j) -- (.25-\j,\j);
+                }
+                \def\y{0};
+                \foreach \i/\v in {0/0,1/1,2/0,3/1,4/0}{
+                    \FPeval{\x}{.2-\i*.1};
+                    \FPeval{\y}{0-.2+\i*.1};
+                    \node[] at (\x+\xram,\y+1) {\v};
+                }
+            }
+            \node at (-.8,0)[rotate=90]{PORT 1};
+            \node at (-.8,1)[rotate=90]{PORT 2};
+            \node at (0,-.6){PORT 1};
+            \node at (1,-.6){PORT 2};
+            %TODO first and second
+            \def\first{-1};
+            \ifthenelse{\first>0}{
+            \draw[dashed] (-.7,0-.25+\first*.1) -- (1.5,0-.25+\first*.1);
+            \draw[dashed] (-.7,0-.15+\first*.1) -- (1.5,0-.15+\first*.1);
+            \draw[dashed] (0+.25-\first*.1,1.25) -- (0+.25-\first*.1,-.5);
+            \draw[dashed] (0+.15-\first*.1,1.25) -- (0+.15-\first*.1,-.5);
+            \node[rotate=270] at (0.2-\first*.1,-.4) {$\Rightarrow 0$};
+            \node at (0.2-\first*.1,.5) {$\oplus$};
+            \node at (-.6,-.2+\first*.1) {flip};
+        }{}
+            \def\second{-3};
+            \ifthenelse{\second>0}{
+            \draw[dashed] (-.7,1-.25+\second*.1) -- (1.5,1-.25+\second*.1);
+            \draw[dashed] (-.7,1-.15+\second*.1) -- (1.5,1-.15+\second*.1);
+            \draw[dashed] (1+.25-\second*.1,1.25) -- (1+.25-\second*.1,-.5);
+            \draw[dashed] (1+.15-\second*.1,1.25) -- (1+.15-\second*.1,-.5);
+            \node[rotate=270] at (1.2-\second*.1,-.4) {$\Rightarrow 0$};
+            \node at (1.2-\second*.1,.5) {$\oplus$};
+            \node at (-.6,.8+\second*.1) {flip};
+        }{}
+            \ifthenelse{\first>0}{
+            \draw[dashed] (-.2,2-.25+\first*.1) -- (1.3,2-.25+\first*.1);
+            \draw[dashed] (-.2,2-.15+\first*.1) -- (1.3,2-.15+\first*.1);
+            \node at (-.6,2-.2+\first*.1) {PORT 1};
+            \node at (-.1,2-.2+\first*.1) {flip};
+            \node at (1.1,2-.2+\first*.1) {$\Rightarrow 0$};
+
+        }{}
+            \ifthenelse{\second>0}{
+            \draw[dashed] (-.2,2-.25+\second*.1) -- (1.3,2-.25+\second*.1);
+            \draw[dashed] (-.2,2-.15+\second*.1) -- (1.3,2-.15+\second*.1);
+            \node at (-.6,2-.2+\second*.1) {PORT 2};
+            \node at (-.1,2-.2+\second*.1) {flip};
+            \node at (1.1,2-.2+\second*.1) {$\Rightarrow 0$};
+        }{}
+
+        \end{tikzpicture}
+        \caption{Clock Cycle}
+        \label{fig:xorram3}
+    \end{subfigure}
+    \caption{The operation of the clever architecture.}
+    \label{fig:xorram}
+\end{figure}

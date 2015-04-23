@@ -1,4 +1,5 @@
 \chapter{INTRODUCTION}
+\label{chapter:introduction}
 This preliminary report outlines a plan to double the current performance of sparse matrix vector multiplication on FPGA platforms.
 \par People use SpMV in a variety of applications including information retrieval, text classification, scientific computing and image processing. Often the SpMV operations are iterative or repeatative and require a large amount of computation. Eigenvector estimation often uses iterative SpMV operations. For example, the pagerank algorithm uses SpMV for eigenvector estimation.
 \par For the most part modern CPUs perform SpMV well. Some may even say FPGAs deserve no consideration when computing SpMV, or say that computing SpMV on FPGAs is solely academic and would only help to design better ASICs, CPUs and GPUs for computing SpMV. We disagree. If you have  an application that uses repetitive SpMV operations on large matrices then FPGAs are exactly the chips you should be looking at. When the matrix and vector sizes  become large, around 10 million values, CPU performance drastically decreases. To address this issue most people turn to GPUs.

@@ -1,2 +1,31 @@
-\chapter{EXPECTED RESULTS}
+\chapter{CONCLUSIONS}
+This is a lot of work for just a FPGA based SpMV implementation. However we believe SpMV is an important computation kernel and that FPGAs can outperform CPUs and GPUs. As mentioned SpMV with large matricies (> 1 billion values) perform poorly on CPUs because of cache issues and do not fit in the memory of GPU cards. These large matrix applications is where we expect FPGA platforms will be used for SpMV calculations.
+\section{Expected Results}
 \label{chapter:expected}
+$R^3$, our previous work, achieved an average performance of 6 GFLOPS on the dataset used by \cite{}. We expect to be able to double this performance to an average of 12 GFLOPS.
+
+\section{Timeline}
+I have targets for the components that need to be made to create our second generation of $R^3$. TODO: table
+
+\begin{table*}
+\caption{Timeline}
+\label{tbl:timeline}
+\centering
+\begin{tabular}{|c|c|}
+\hline
+scratchpad & March 1 \\
+\hline
+fzip (floating point compression) & April 1 \\
+\hline
+matrix compression & May 1 \\
+\hline
+Multiply Accumulator & June 1\\
+\hline
+Matrix hardware decoder & July 1\\
+\hline
+Memory Controller & August 1 \\
+\hline
+$R^3$ gen. 2 & September 1 \\
+\hline
+\end{tabular}
+\end{table*}

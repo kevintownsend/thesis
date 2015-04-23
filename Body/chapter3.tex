@@ -1,12 +1,12 @@
 \chapter{SpMV on FPGA METHODOLOGY}
 In the previous chapter we have discussed how others have approached computing SpMV on FPGAs and other processors. We build upon the good ideas and add our own.
-\par Our design methodology consists of 3 design pillars. The first pillar is designing a multiply accumulator that does not stall and maintains multiple intermediate values. The second pillar is designing a matrix traversal that enables reuse of vector values and improves matrix compression. The third pillar is designing a matrix compression scheme with a high compression ratio and has a hardware amenable decoder.
-\par These pillars rely on each other. The first pillar, the multiply accumulator, has to accumulate multiple rows at a time to allow different traversals (the second pillar). The multiply accumulator should also not (or rarely) stall. A multiply accumulator that stalls regularly can not maintain high throughput.
+\par Our design methodology consists of 3 design pillars. The first pillar is the design of a multiply accumulator that does not stall and maintains multiple intermediate values. The second pillar is the design of a matrix traversal that enables reuse of vector values and improves matrix compression. The third pillar is the design of a matrix compression scheme with a high compression ratio and has a hardware amenable decoder.
+\par These pillars rely on each other. The first pillar, the multiply accumulator, has to accumulate multiple rows at a time to allow different traversals (the second pillar). The multiply accumulator also should not stall, or at least rarely stall. A multiply accumulator that stalls regularly can not maintain high throughput.
 \par The second pillar, matrix traversal, primarily helps with vector reuse. Column traversal has a major effect on vector reuse. Many people argue that vector caching is the best way to achieve vector reuse for FPGAs. We disagree. With the ability to use column traversal in a horizontal subsection of say 1000 rows one can perfectly reuse vector values in this section. This requires the storage of 1000 intermediate y values or 8KB. Compare this to caching. Assume there are 10 non-zero elements per row and assume each vector value gets accessed twice. Then to achieve good caching the cache must support 5000 values or 40KB. This also ignores storing the vector indices of the cached values. So, in this example, storing intermediate values is more than 5 times more space efficient than vector caching.
 \par The second advantage of mixing row and column traversal is that it leads to smaller deltas. In this paper a delta is the traversal distance between a matrix element and its preceding matrix element in the traversal.
 \par The third pillar may be the most important for FPGAs. Compression of the matrix has a large amount of importance, because reading the matrix takes up a majority of the memory bandwidth. Currently the SpMV field views not counting preprocessing of the matrix towards the SpMV runtime allowable. This is because SpMV is usually used for iterative and repetitive methods. We agree with this sentiment.
 \par Using deltas to compress indices is the first and easiest step towards this pillar. Many compression implementations try to align variable length encoding to 4 bit or other size boundaries. We give little regard to boundaries because we find the added compression to be worth the extra FPGA space the decoder needs.
-\par Value compression is tricky but has a potential to save large amounts of space and thus memory bandwidth. Values repeat more than one would expect in matrices. Taking advantage of this repetition is the biggest step towards good compression. Figure 3.3 shows how much of an effect this pattern has on the performance of our previous SpMV implementation $R^3$.
+\par Value compression is tricky but has a potential to save large amounts of space and thus memory bandwidth. Values repeat more than one would expect in matrices. Taking advantage of this repetition is the biggest step towards good compression. Figure 3.3 shows how much of an effect this pattern has on the performance of our previous SpMV implementation $R^3$. \par%
 \begin{figure}
 \centering
 \begin{tikzpicture}[blueRect/.style={draw,rectangle,fill=blue!30,thick,minimum width=2cm, minimum height=.7cm}, %
@@ -47,7 +47,7 @@ data/.style={draw,trapezium,fill=blue!30,thick,trapezium left angle=70,trapezium
 \end{tikzpicture}
 \caption{Data flow of an $R^3$ SpMV processing element. The processing element needs the column data before accessing the vector data.}
 \label{process}
-\end{figure}
+\end{figure}%
 \begin{figure}
 \centering
 \begin{tikzpicture}[scale=1]
@@ -85,58 +85,7 @@ data/.style={draw,trapezium,fill=blue!30,thick,trapezium left angle=70,trapezium
 \end{tikzpicture}
 \caption{A single $R^3$ processing element. The arrows show the flow of data through the processing element. Although this diagram shows the memory access to each of the 3 places in memory as separate, they share one memory port. The diagram also does not show the FIFOs that help keep the pipeline full.}
 \label{fig_SpMV}
-\end{figure}
-\begin{figure}
-\centering
-\begin{tikzpicture}
-\draw[step=1.0,gray,very thin] (0,0) grid (6.5,4.5);
-\draw [->,thick] (0,0) to (0,5);
-\draw [->,thick] (0,0) to (7,0);
-\foreach \x/\xtext in {0/1,1/10,2/100,3/1\,000,4/10\,000,5/100\,000,6/1\,000\,000}
-	\draw (\x cm, 1pt) -- (\x cm, -1pt) node[anchor=north west,rotate=-30] {$\xtext$};
-\foreach \y/\ytext in {0/0,1/4,2/8,3/12,4/16}
-	\draw (1pt, \y cm) -- (-1pt,\y cm) node[anchor=east] {$\ytext$};
-
-\foreach \i/\x/\y/\m/\s/\t/\a in {
-0/0.0/3.4/dense/1/13.6/.3,%
-1/0.0/3.4/rma10/1/13.6/-.1,%
-2/0.0/3.2/qcd5\_4/1/12.8/-.4,%
-3/2.0293837776852097/3.175/cant/107/12.7/0,%
-6/3.5543680009900878/1.55/mc2depi/3584/6.2/.4,%
-8/5.0730067708393705/1.475/mac\_econ\_fwd500/118306/5.9/.3,%
-9/5.123400785682125/1.975/shipsec1/132862/7.9/.5,%
-10/5.433/1.3/raefsky1/271382/5.2/.1,%
-11/5.451272036830906/1.55/scircuit/282665/6.2/.3,%
-12/5.725640521811938/1.225/psmigr\_2/531668/4.9/-.4,%
-13/5.906686753316721/1.6/torso2/806653/6.4/-.1,%
-14/6.197264013258786/2.175/consph/1574940/8.7/.3
-%1/0/3.4/dense/1/13.6/.3, 1/0/3.4/rma10/1/13.6/-.1, 2/0/3.2/qcd5\_4/1/12.8/-.4, 3/2.03/3.175/cant/107/12.7/0, %
-%6/3.5543680009900878/1.55/mc2depi/3584/6.2/.4,%
-%8/5.0730067708393705/1.475/mac\_econ\_fwd500/118306/5.9/.3,%
-%9/5.123400785682125/1.975/shipsec1/132862/7.9/.5,%
-%10/5.451272036830906/1.55/scircuit/282665/6.2/.3,%
-%11/5.725640521811938/1.225/psmigr\_2/531668/4.9/-.3,%
-%12/5.906686753316721/1.6/torso2/806653/6.4/0,%
-%13/6.197264013258786/2.175/consph/1574940/8.7/.3%
-}
-	\draw (\x,\y) [fill=red]circle (3pt) node[anchor=north west,rotate=60,xshift=4pt, yshift=\a cm, fill=white, inner sep=-2pt]{};
-
-%outliers
-\foreach \i/\x/\y/\m/\s/\t/\a in {%
-4/2.828015064223977/0.55/dw8192/673/2.2/.6,%
-5/3.1408221801093106/1.0/t2d\_q9/1383/4.0/-.1,%
-7/4.864689034136851/0.85/epb1/73230/3.4/-.1%
-}
-	\draw (\x,\y) [fill=yellow]circle (3pt) node[anchor=north west,rotate=60,xshift=.4, yshift=\a cm, fill=white, inner sep=-2pt]{};
-
-
-\draw [dashed] (2.4,-.6) -- (2.4,4.8) node [midway,above, sloped, xshift=-.5cm]{$256$};
-\node at (3,-1.1) {Number of Unique Values in Matrix};
-\node at (-.8,2) [rotate=90] {Performance (Gflops)};
-\end{tikzpicture}
-\caption[dont care]{Unique values in a matrix vs the performance of $R^3$. Matrices with fewer than 256 unique values (only common elements exist) enables $R^3$ format to compress much better. The \tikz \draw[fill=yellow] circle(3pt);'s are outliers due to their size (see Figure \ref{nnzVgflops}).}
-\label{uniqueVgflops}
-\end{figure}
-
+\end{figure}%
+%
 When these pillars are in place the dataflow of the design still looks similar to other implementations (Figure \ref{process}). The architecture diagram (Figure \ref{fig_SpMV}) also follows the same general flow of the dataflow diagram.
 \par We separate our current and planned contributions into 5 pieces, the next 5 chapters. Chapter 3 focuses entirely on the first pillar, the multiply accumulator design. Chapter 4 focuses on pillars 2 and 3 with disscussing matrix traversal and compressing indices with delta compression. Chapter 5 focuses focuses on the second part of pillar 3, value compression. We found good value compression requires a large amount of on-chip memory, therefore, Chapter 6 focuses on the design of a large memory shared by multiple processing elements.
