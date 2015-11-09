@@ -362,7 +362,6 @@ The cells in the intermediator have four states which we call the red, yellow, g
 %
 \indent
 To help explain, consider a simpler case where the depth of the intermediator is 8 instead of 1024. Figure \ref{intermediatorEx} shows 8 clock cycles of operation. At every clock cycle up to 2 valid input values with corresponding row indexes arrive. For simplicity, we do not show the values being calculated in the figure.
-%\section{Four RAM Blocks and Clever use of XOR}
 \section{A Dual Port 1$\times$1024 RAM with Zero Clock Cycle Latency}
 \label{sec:dualmemory}
 We have not yet addressed the issue of keeping track of the vacant/occupied state of the cells in the Intermediator. To do this we need a dual port 1-bit RAM. In order to update the value in RAM in one clock cycle it must have no read latency. \par
@@ -710,3 +709,4 @@ With a clever arragement of 4 pseudo dual port RAMs we can emulate one dual port
     \caption[Dual port RAM with zero clock cycle read latency]{This example shows 4 clock cycles of operation of a $1\times 5$ dual port RAM, created by combining 4 pseudo dual-port RAMs.}
     \label{fig:xorram}
 \end{figure}
+%TODO: synthesis results

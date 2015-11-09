@@ -1,2 +1,19 @@
 \chapter{CONCLUSIONS}
-This is a lot of work for just a FPGA based SpMV implementation. However we believe SpMV is an important computation kernel and that FPGAs can outperform CPUs and GPUs. As mentioned SpMV with large matricies (> 1 billion values) perform poorly on CPUs because of cache issues and do not fit in the memory of GPU cards. These large matrix applications is where we expect FPGA platforms will be used for SpMV calculations.
+\label{chp:conclusion}
+This is a lot of work for just a FPGA based SpMV implementation. However we believe SpMV is an important computation and that FPGAs can outperform CPUs and GPUs. As mentioned SpMV with large matrices ($>$ 1 billion values) perform poorly on CPUs because of cache issues and do not fit in the RAM memory of GPU cards. These large matrix applications is where we expect FPGA platforms will be used for SpMV calculations.
+\section{Related Work}
+More information about the work presented in this report is in the following papers:
+\begin{itemize}
+    \item ``A Scalable Unsegmented Multi-port Memory for FPGA-based Systems" (in submission) (paper available on request)
+    \item ``A Multi-Phase Approach to Floating-Point Compression" \cite{prelim:townsend3}
+    \item ``Reduce, Reuse, Recycle ($R^3$): A Design Methodology for Sparse Matrix Vector Multiplication on Reconfigurable Platforms" \cite{prelim:townsend}
+\end{itemize}
+%\section{Unrelated Work}
+%We have other work done while at the Iowa State Reconfigurable Computing Laboratory, but not present in this report, in the following papers:
+%\begin{itemize}
+%    \item ``k-NN Text Classification using an FPGA-Based Sparse Matrix Vector Multiplication Accelerator" \cite{prelim:townsend4}
+%    \item ``A High Performance Systolic Architecture for k-NN Classification" \cite{prelim:townsend2}
+%    \item ``CyGraph: A Reconfigurable Architecture for Parallel Breadth-First Search" \cite{prelim:attia}
+%    \item ``A 15-bit Binary-Weighted Current-Steering DAC with Order Element Matching" \cite{prelim:zeng}
+%    \item ``Shepard: A Fast Exact Match Short Read Aligner" \cite{prelim:nelson}
+%\end{itemize}
