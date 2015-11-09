@@ -1,7 +1,7 @@
 \chapter{MULTIPLY-ACCUMULATOR}
-\label{chapter:mac}
+\label{chp:mac}
 \begin{figure}
-\hspace{-10pt}
+    \centering
 \begin{tikzpicture}[scale=1]
 \clip (-5,-2.5) rectangle (5,2.5);
 \node at (0,0) [draw, rectangle, minimum height=4cm, minimum width=8cm, label={[label distance=-.6cm,xshift=-2cm]90:Multiply-Accumulator}](acc){};
@@ -34,25 +34,25 @@
 \path [draw, thick, >=stealth',->] (-.5,-.5) --node[sloped, fill=white, inner sep=1pt]{val} (-.5,-2.5);
 \end{tikzpicture} %
 
-\caption{The no-stall multiply-accumulator block handles multiple intermediate values at a time. This allows multiple intermediate values in the adder pipeline.}
-\label{mac}
+\caption[Multiply-accumulator]{The no-stall multiply-accumulator block handles multiple intermediate values at a time. This allows multiple intermediate values in the adder pipeline.}
+\label{fig:mac}
 \end{figure}
-A high throughput SpMV implementation relies on designing a no-stall multiply accumulator (MAC). An inefficient engine stalls when a matrix and its associated vector value arrives every or nearly every clock cycle. The long latency of floating point addition makes this hard. To solve this, our approach works on multiple intermediate $y$ vector values and does the additions out of order. For example in computing $1+2+3+4$ the MAC does $(1+2)+(3+4)$. This removes the data dependency of adding $1$ and $2$ before processing $3$. CPUs and GPUs compute floating point addition in order (eg. $((1+2)+3)+4$). This means results may differ slightly, because changing the order of floating point addition can change the result [\cite{prelim:goldberg}].\\
-\indent In $R^3$ [\cite{prelim:townsend}] we designed a block called an Intermediator (Section \ref{sec:intermediator}) capable of storing 32 intermediate $y$ vector values. In our next design we intend to expand this to 1024 (the depth of one dual port BlockRAM in most Xilinx chips). Both designs have an interesting side effect that the allow the matrix to be traversed in a loosely row major traversal and the MAC will still work correctly. The step to from 32 to 1024 intermediate values allows more freedom in the traversal. The rest of the chapter discusses the new design. The matrix elements in one set of 512 rows can be traversed in any way just as long as all the elements are traversed before going to the next 512 rows. Later in chapter 5 we discuss traversals that abide by this rule and allow for easy reuse of $x$ vector values. We plan to use a traversal that follows this rule called row column row (RCR) traversal.
+A high throughput SpMV implementation relies on designing a no-stall multiply accumulator (MAC). An inefficient engine stalls when a matrix and its associated vector value arrives every or nearly every clock cycle. The long latency of floating point addition makes this complicated. To solve this, our approach works on multiple intermediate $y$ vector values and does the additions out of order (\figurename~\ref{fig:mac}). So, $y[i]$ can still be accumulating while processing $y[i+1]$. For an example of out of order addition, when computing $1+2+3+4$ the MAC does $(1+2)+(3+4)$. This removes the data dependency of adding $1$ and $2$ before processing $3$. CPUs and GPUs compute floating point addition in order (eg. $\left((1+2)+3\right)+4$). This means results may differ slightly, because changing the order of floating point addition can change the result [\cite{prelim:goldberg}].\\
+\indent In $R^3$ [\cite{prelim:townsend}] we designed a block called an Intermediator capable of storing 32 intermediate $y$ vector values. In our next design we intend to expand this to 1024 (the depth of one dual port RAM blocks in most Xilinx chips). Both designs have an interesting side effect that the allow the matrix to be traversed in a loosely row major traversal and the MAC still works correctly. The step to from 32 to 1024 intermediate values allows more freedom in the traversal. The rest of the chapter discusses the new design. The matrix elements in one set of 512 rows can be traversed in any way just as long as all the elements are traversed before going to the next 512 rows. Later in chapter 5 we discuss traversals that abide by this rule and allow for easy reuse of $x$ vector values.
 \section{Intermediator}
 \label{sec:intermediator}
-The Intermediator (Figure \ref{intermediatorEx}) takes in two values, one from the multiplier's result and one from the adder's result and outputs a pair of values to be added. The dual-port Block RAM (middle block in Figure \ref{intermediatorEx}) stores intermediate values until an element in the same row appears. \par
-For most matrices, the Block RAM cannot store the entire intermediate $y$ vector. Also the control logic needs to remember the state of each slot in RAM (empty or full). Remembering the state of each RAM location and updating that state requires complicated logic. In $R^3$ we approach this problem by limiting the number of active intermediate values to 32. In our new design we will use a distributed RAM with width of 1 bit to keep track of the state of each slot. Since distributed RAM only has 1 write port we need to do something clever. The first option would be to multi-pump the distributed RAM to achieve two writes every clock cycle. The second option is to create a dual port RAM with Banking. Banking is discussed in chapter 9. The third option is to use 4 RAM blocks and clever use of XORs.
-\par The memory has four states with we call the red, yellow, green and white states. The memory is partitioned into 2 parts an upper and lower part. Once the accumulation starts one of these parts will be in the red active state. Once the incoming values move to the next 512 row section of the matrix the active state transitions to the yellow fading state, and the other half of the memory is now in the active state. Recall our traversal rule is that each 512 rows must be traversed before proceeding to the next 512 rows. The yellow fading state exists because values are still being accumulated in the previously active memory. The memory will always be accumulated in 80 clock cycles. At that point the faded state transitions to the green ``read to store" state. Once the values have been sent out to be stored the memory transitions to the white idle state.
-\par To understand why 80 cycle cycles are needed to ensure the accumulation has finished after no new values arrive from the multiplier, let us look at the worst case. Only inputs from the adder correspond with to the elements in the fading window. So, the theoretical worst case occurs with a full adder pipeline and each value corresponds to the same row. Every 16 cycles (the adder pipeline length) the number of elements with the same row in the pipeline cuts in half. Therefore the worst case would take 80 ($(log_2(16) + 1) \times 16$) clock cycles to guarantee that the fading window only has final $y$ vector values. The worst case would also advance the window in 512 clock cycles (1 element per row in the matrix for those 512 rows corresponding to the active window). It also takes 512 cycles to store the green "ready to store" elements. So in theory the MAC could stall, but in practice this never happens.
+The Intermediator (Figure \ref{intermediatorEx}) takes in two values, one from the multiplier's result and one from the adder's result and outputs a pair of values to be added together. The dual-port RAM block (the middle block in Figure \ref{intermediatorEx}) stores intermediate values until an element in the same row appears. \par
+For large matrices, the RAM blocks cannot store the entire intermediate $y$ vector. Also the control logic needs to remember the state of each slot in RAM (vacant or occupied). Remembering the state of each RAM location and updating that state requires a dual-port RAM with zero clock cycle latency. This type of RAM does not exist in the FPGA fabric. In $R^3$, we approach this problem by using FPGA logic which limits the number of active intermediate values to 32. In our new design we will use distributed RAM with a width of 1 bit to keep track of the state of each slot (discussed later in Section \ref{sec:dualmemory}). \par
+The cells in the intermediator have four states which we call the red, yellow, green and white states, in addition to the vacant/occupied state. The memory is split in 2, an upper and lower section. Once the accumulation starts, one of these sections will be in the red active state. Once the incoming values move to the next 512 row section of the matrix this section transitions to the yellow fading state, and the new section of the memory is now in the red active state. Recall our traversal rule is that each 512 rows must be traversed before proceeding to the next 512 rows. The yellow fading state exists because values are still being accumulated in the previously active memory. The memory will always be accumulated within 80 clock cycles. At that point the faded state transitions to the green ``read to store" state. Once the values have been sent out to be stored the memory transitions to the white idle state.
+\par To understand why at most 80 cycle cycles are needed to ensure the accumulation has finished after no new values arrive from the multiplier, let us look at the worst case operation. Only inputs from the adder correspond with to the elements in the fading window and the multiplier should not output values belong to the fading window. So, the theoretical worst case occurs with a full adder pipeline and each value corresponds to the same row. Every 16 cycles (the adder pipeline length) the number of elements with the same row in the pipeline cuts in half. Therefore, the worst case would take 80 ($(\log_2(16) + 1) \times 16$) clock cycles to guarantee that no fading elements get sent to the adder and the fading window only has final $y$ vector values. The worst case would also advance the window in 512 clock cycles (1 element per row in the matrix for those 512 rows corresponding to the active window). It also takes 512 cycles to store the green ``ready to store" elements. So in theory the MAC could stall, but in practice this never happens.
 \par Many cases occur when accumulating values in multiple rows and the Intermediator handles each case properly:
-\\\indent Case 1: (Figure \ref{cycle7}) The trivial case, no valid input arrives. If the ``to result" block has values, it outputs a value. An overflow FIFO (explained in case 6) outputs a value if it has values.
-\\\indent Case 2: (Figure \ref{cycle4}) Only one value arrives (valid) and the row corresponds to an empty cell. The value goes into the empty cell. If the ``to result" window has values, it outputs a result, and if the FIFO has values it outputs a set to the adder.
-\\\indent Case 3: (Figure \ref{cycle1}) Similar to case 2 except with a full cell. It retrieves the value in the ram slot and goes to the adder with the input value. The state of the cell gets updated to empty.
-\\\indent Case 4: (Figure \ref{cycle2}, \ref{cycle8}) Both values have row indexes that correspond to empty cells in the Block RAM. Both values get stored in the Block RAM and both cells switch to full. If the FIFO from the Block RAM to the output has values it sends one set of values to the output. 
-\\\indent Case 5: (Figure \ref{cycle6}) One value has a row index corresponding to an empty cell, and the other to a full cell. The first value goes in the empty cell and the full cell goes to the output with the second value. 
-\\\indent Case 6: (Figure \ref{cycle3}) Both values have row indexes that correspond to full cells in the Block RAM. One input value and corresponding Block RAM cell goes to the output. The output can only handle one output pair at a time, so the other input value and corresponding Block RAM cell goes to the FIFO.
-\\\indent Case 7: (Figure \ref{cycle5}) The inputs Row0 and Row1 equal each other. In this case the the values go through the pipeline and do not use the Block RAM in the center of the block. They simply pass through to the adder with the row index.\\
+\\\indent Case 1: (Figure \ref{cycle7}) The trivial case, no valid input arrives. If the ``to result" block has values, it outputs a pair of values to the adder. An overflow FIFO (explained in case 6) outputs a value if it has values.
+\\\indent Case 2: (Figure \ref{cycle4}) Only one value arrives and the row corresponds to a vacant cell. The value goes into the vacant cell. If the ``to result" window has values, it outputs a result, and if the overflow FIFO has values it outputs a set to the adder.
+\\\indent Case 3: (Figure \ref{cycle1}) Similar to case 2 except with an occupied cell. It retrieves the value in the Intermediator cell and goes to the adder with the input value. The state of the cell gets updated to vacant.
+\\\indent Case 4: (Figure \ref{cycle2}, \ref{cycle8}) Both values have row indexes that correspond to vacant cells in the RAM block. Both values get stored in the RAM block and both cells switch to occupied. If the overflow FIFO has values it sends one set of values to the output. 
+\\\indent Case 5: (Figure \ref{cycle6}) One value has a row index corresponding to a vacant cell, and the other to an occupied cell. The first value goes in the vacant cell and the value in the occupied cell goes to the adder with the second value. 
+\\\indent Case 6: (Figure \ref{cycle3}) Both values have row indexes that correspond to occupied cells in the RAM. One input value and its corresponding Intermediator cell's value go to the output. The output can only handle one output pair at a time, so the other input value and its corresponding Intermediator cell's value go to the overflow FIFO.
+\\\indent Case 7: (Figure \ref{cycle5}) The values have identical row indices. In this case, the values go through the pipeline and do not touch the Intermediator cells. They simply pass through to the adder.\\
 %
 \begin{figure*}
 \begin{multicols}{3}
@@ -77,7 +77,8 @@ For most matrices, the Block RAM cannot store the entire intermediate $y$ vector
 \draw[pattern=north east lines,preaction={fill,green}] ([xshift=-.5cm,yshift=-.125cm]n1) rectangle ([xshift=.5cm,yshift=.125cm]n4);
 %\draw[pattern=north east lines,preaction={fill,green}] ([xshift=-.5cm,yshift=-.125cm]n2) rectangle ([xshift=.5cm,yshift=.125cm]n2);
 \foreach [count=\i] \y in {-1.85,-1.6,...,-.1}{
-	\node (m\i) at ([xshift=-0.2cm,yshift=-.2cm+\y cm]c) []{\scriptsize \i};
+    \FPeval{\n}{round(\i-1:0)}
+	\node (m\i) at ([xshift=-0.7cm,yshift=-.2cm+\y cm]c) []{\scriptsize \n};
 }
 
 \path [draw, thick, >=stealth',->](a) to [bend right=20] (e);
@@ -110,7 +111,8 @@ For most matrices, the Block RAM cannot store the entire intermediate $y$ vector
 \draw[pattern=north east lines] ([xshift=-.5cm,yshift=-.125cm]n5) rectangle ([xshift=.5cm,yshift=.125cm]n5);
 \draw[pattern=north east lines,preaction={fill,green}] ([xshift=-.5cm,yshift=-.125cm]n2) rectangle ([xshift=.5cm,yshift=.125cm]n4);
 \foreach [count=\i] \y in {-1.85,-1.6,...,-.1}{
-	\node (m\i) at ([xshift=-0.2cm,yshift=-.2cm+\y cm]c) []{\scriptsize \i};
+    \FPeval{\n}{round(\i-1:0)}
+	\node (m\i) at ([xshift=-0.7cm,yshift=-.2cm+\y cm]c) []{\scriptsize \n};
 }
 
 \path [draw, thick, >=stealth',->](a) to [bend right=20] (n6.west);
@@ -119,7 +121,7 @@ For most matrices, the Block RAM cannot store the entire intermediate $y$ vector
 \draw [->,thick, >=stealth'] (e1) to [bend right=10] (e);
 %\tikzstyle{line} = [draw, thick, -latex' ,shorten >=2pt];
 \end{tikzpicture}
-\caption{Second clock cycle, 2 element gets stored in RAM.}
+\caption{Second clock cycle, 2 values gets stored in the RAM.}
 \label{cycle2}
 \end{subfigure}
 
@@ -143,7 +145,8 @@ For most matrices, the Block RAM cannot store the entire intermediate $y$ vector
 \draw[pattern=north east lines] ([xshift=-.5cm,yshift=-.125cm]n5) rectangle ([xshift=.5cm,yshift=.125cm]n7);
 \draw[pattern=north east lines,preaction={fill,green}] ([xshift=-.5cm,yshift=-.125cm]n2) rectangle ([xshift=.5cm,yshift=.125cm]n4);
 \foreach [count=\i] \y in {-1.85,-1.6,...,-.1}{
-	\node (m\i) at ([xshift=-0.2cm,yshift=-.2cm+\y cm]c) []{\scriptsize \i};
+    \FPeval{\n}{round(\i-1:0)}
+	\node (m\i) at ([xshift=-0.7cm,yshift=-.2cm+\y cm]c) []{\scriptsize \n};
 }
 
 \path [draw, thick, >=stealth',->](a) to [bend left=10] (d);
@@ -151,7 +154,7 @@ For most matrices, the Block RAM cannot store the entire intermediate $y$ vector
 \path [draw, thick, >=stealth',->](a) to [bend right=0] (e);
 \path [draw, thick, >=stealth',->](n6.east) to [bend left=30](e);
 \end{tikzpicture}
-\caption{Third clock cycle, the 2 inputs correspond to full cells in the Block RAM.}
+\caption{Third clock cycle, the 2 inputs correspond to occupied cells in the RAM block.}
 \label{cycle3}
 \end{subfigure}
 
@@ -178,7 +181,8 @@ For most matrices, the Block RAM cannot store the entire intermediate $y$ vector
 \draw[pattern=north east lines] ([xshift=-.5cm,yshift=-.125cm]n5) rectangle ([xshift=.5cm,yshift=.125cm]n5);
 \draw[pattern=north east lines,preaction={fill,green}] ([xshift=-.5cm,yshift=-.125cm]n2) rectangle ([xshift=.5cm,yshift=.125cm]n4);
 \foreach [count=\i] \y in {-1.85,-1.6,...,-.1}{
-	\node (m\i) at ([xshift=-0.2cm,yshift=-.2cm+\y cm]c) []{\scriptsize \i};
+    \FPeval{\n}{round(\i-1:0)}
+	\node (m\i) at ([xshift=-0.7cm,yshift=-.2cm+\y cm]c) []{\scriptsize \n};
 }
 
 \path [draw, thick, >=stealth',->](a) to [bend right=10] (n7.west);
@@ -186,7 +190,7 @@ For most matrices, the Block RAM cannot store the entire intermediate $y$ vector
 \draw [->,thick, >=stealth'] (e1) to [bend right=10] (e);
 %\tikzstyle{line} = [draw, thick, -latex' ,shorten >=2pt];
 \end{tikzpicture}
-\caption{Fourth clock cycle, 1 element gets stored in RAM.}
+\caption{Fourth clock cycle, 1 value gets stored in RAM.}
 \label{cycle4}
 \end{subfigure}
 \begin{subfigure}{\linewidth}
@@ -210,7 +214,8 @@ For most matrices, the Block RAM cannot store the entire intermediate $y$ vector
 \draw[pattern=north east lines] ([xshift=-.5cm,yshift=-.125cm]n7) rectangle ([xshift=.5cm,yshift=.125cm]n7);
 \draw[pattern=north east lines,preaction={fill,green}] ([xshift=-.5cm,yshift=-.125cm]n3) rectangle ([xshift=.5cm,yshift=.125cm]n4);
 \foreach [count=\i] \y in {-1.85,-1.6,...,-.1}{
-	\node (m\i) at ([xshift=-0.2cm,yshift=-.2cm+\y cm]c) []{\scriptsize \i};
+    \FPeval{\n}{round(\i-1:0)}
+	\node (m\i) at ([xshift=-0.7cm,yshift=-.2cm+\y cm]c) []{\scriptsize \n};
 }
 
 \path [draw, thick, >=stealth',->](a) to [bend left=10] (e);
@@ -243,7 +248,8 @@ For most matrices, the Block RAM cannot store the entire intermediate $y$ vector
 \draw[pattern=north east lines,preaction={fill,green}] ([xshift=-.5cm,yshift=-.125cm]n4) rectangle ([xshift=.5cm,yshift=.125cm]n4);
 \draw[pattern=north east lines] ([xshift=-.5cm,yshift=-.125cm]n5) rectangle ([xshift=.5cm,yshift=.125cm]n5);
 \foreach [count=\i] \y in {-1.85,-1.6,...,-.1}{
-	\node (m\i) at ([xshift=-0.2cm,yshift=-.2cm+\y cm]c) []{\scriptsize \i};
+    \FPeval{\n}{round(\i-1:0)}
+	\node (m\i) at ([xshift=-0.7cm,yshift=-.2cm+\y cm]c) []{\scriptsize \n};
 }
 
 \path [draw, thick, >=stealth',->](a) to [bend right=20] (n6.west);
@@ -277,7 +283,8 @@ For most matrices, the Block RAM cannot store the entire intermediate $y$ vector
 \draw[pattern=north east lines,preaction={fill,green}] ([xshift=-.5cm,yshift=-.125cm]n4) rectangle ([xshift=.5cm,yshift=.125cm]n4);
 \draw[pattern=north east lines] ([xshift=-.5cm,yshift=-.125cm]n5) rectangle ([xshift=.5cm,yshift=.125cm]n6);
 \foreach [count=\i] \y in {-1.85,-1.6,...,-.1}{
-	\node (m\i) at ([xshift=-0.2cm,yshift=-.2cm+\y cm]c) []{\scriptsize \i};
+    \FPeval{\n}{round(\i-1:0)}
+	\node (m\i) at ([xshift=-0.7cm,yshift=-.2cm+\y cm]c) []{\scriptsize \n};
 }
 \path [draw, thick, >=stealth',->](n4.west) to [bend right=5] (b);
 \end{tikzpicture}
@@ -305,13 +312,14 @@ For most matrices, the Block RAM cannot store the entire intermediate $y$ vector
 \draw[fill=yellow] ([xshift=-.5cm,yshift=-.125cm]n5) rectangle ([xshift=.5cm,yshift=.125cm]n8);
 \draw[pattern=north east lines] ([xshift=-.5cm,yshift=-.125cm]n5) rectangle ([xshift=.5cm,yshift=.125cm]n6);
 \foreach [count=\i] \y in {-1.85,-1.6,...,-.1}{
-	\node (m\i) at ([xshift=-0.2cm,yshift=-.2cm+\y cm]c) []{\scriptsize \i};
+    \FPeval{\n}{round(\i-1:0)}
+	\node (m\i) at ([xshift=-0.7cm,yshift=-.2cm+\y cm]c) []{\scriptsize \n};
 }
 
 \path [draw, thick, >=stealth',->](a) to [bend left=0] (n8.west);
 \path [draw, thick, >=stealth',->](a) to [bend right=10] (n1.west);
 \end{tikzpicture}
-\caption{Eighth clock cycle, the 2 inputs correspond to empty cells in the Block RAM.}
+\caption{Eighth clock cycle, the 2 inputs correspond to vacant cells in the RAM block.}
 \label{cycle8}
 \end{subfigure}
 \begin{subfigure}{\linewidth}
@@ -336,31 +344,32 @@ For most matrices, the Block RAM cannot store the entire intermediate $y$ vector
 \draw[pattern=north east lines] ([xshift=-.5cm,yshift=-.125cm]n8) rectangle ([xshift=.5cm,yshift=.125cm]n8);
 \draw[pattern=north east lines] ([xshift=-.5cm,yshift=-.125cm]n1) rectangle ([xshift=.5cm,yshift=.125cm]n1);
 \foreach [count=\i] \y in {-1.85,-1.6,...,-.1}{
-	\node (m\i) at ([xshift=-0.2cm,yshift=-.2cm+\y cm]c) []{\scriptsize \i};
+    \FPeval{\n}{round(\i-1:0)}
+	\node (m\i) at ([xshift=-0.7cm,yshift=-.2cm+\y cm]c) []{\scriptsize \n};
 }
 
 %\path [draw, thick, >=stealth',->](a) to [bend left=0] (n8.west);
 %\path [draw, thick, >=stealth',->](a) to [bend right=10] (n1.west);
 \end{tikzpicture}
-\caption{Eighth clock cycle, the 2 inputs correspond to empty cells in the Block RAM.}
+\caption{Ninth clock cycle, the Intermediator has no inputs and nothing to send to the adder or final values to output.}
 \label{cycle8}
 \end{subfigure}
 \end{multicols}
 
-\caption{This shows a simple example of the Intermediator running for 9 clock cycles. For demonstration, the size of the RAM is 8 instead of 1024.}
+\caption[Intermediator]{This shows a simple example of the Intermediator running for 9 clock cycles. For demonstration, the size of the RAM is 8 instead of 1024.}
 \label{intermediatorEx}
 \end{figure*}
 %
 \indent
-To help explain, consider a simpler case where the depth of the intermediator is 8 instead of 1024. Figure \ref{intermediatorEx} shows 8 clock cycles of operation. At every clock cycle up to 2 valid input values with corresponding row indexes arrive. For simplicity we do not show the values being calculated in the figure.
-\par We should consider the possibility that the windows could advance before all the final values reach the fading window. If this does not happen then the MAC has to stall or else incorrect values would occur in the result. Again we can do a worse case analysis. We assume each row has at least one value. In our opinion preprocessing matrices to either remove empty rows or add explicit zeros is fair. Our worst case would be if all the rows only had 1 value. This means the active memory would be active for 512 cycles but storing the previous values would take 512+80 cycles. However the worst case stall would decrease throughput by 80/512 (16\%). This worst case behavior does not occur in practice.
+To help explain, consider a simpler case where the depth of the intermediator is 8 instead of 1024. Figure \ref{intermediatorEx} shows 8 clock cycles of operation. At every clock cycle up to 2 valid input values with corresponding row indexes arrive. For simplicity, we do not show the values being calculated in the figure.
 %\section{Four RAM Blocks and Clever use of XOR}
 \section{A Dual Port 1$\times$1024 RAM with Zero Clock Cycle Latency}
-This trick is essentially a special case of \cite{}. This requires the use of pseudo dual port distributed RAMs. Before looking at the implementation let us look at the target behavior. During an intermidiator status request the bit of  the requested address will always flip. (Empty cells become full and full cells become empty.) This flip occurs after the correct status is reported.\par
+\label{sec:dualmemory}
+We have not yet addressed the issue of keeping track of the vacant/occupied state of the cells in the Intermediator. To do this we need a dual port 1-bit RAM. In order to update the value in RAM in one clock cycle it must have no read latency. \par
+We implement a special case of the memory developed in \cite{prelim:laforest2} to achieve this. This requires the use of pseudo dual port distributed RAMs. Before looking at the implementation let us look at the target behavior. During an intermidiator status request the bit of  the requested address will always flip. (Vacant cells become occupied and occupied cells become vacant.) This flip occurs the clock cycle after the status is reported.\par
 FPGA vendors do not provide dual port distributed RAMs. Instead, they provide pseudo dual port distributed RAMs. That is RAMs with one read port and one write port. \par
-With a clever arragement of 4 pseudo dual port RAMs we can emulate one dual port RAM. To begin with, arrange the RAMs in a $2\times 2$ grid. The write ports of the 2 RAMs in each row are connected together. The read ports of the 2 RAMs in each column are connected by an XOR gate. The address on port 1 controls the address of the write port of the bottom row of RAMs. The address on port 1 also controls the address of the read ports of the left column of RAMs. Similarly, the address on port 2 controls the address of the write ports of the top row of RAMs. The address on port 2 also controls the address of the read ports of the right column of RAMs.\par
+With a clever arragement of 4 pseudo dual port RAMs we can emulate one dual port RAM. To begin with, arrange the RAMs in a $2\times 2$ grid. The write ports of the 2 RAMs in each row are connected together. The read ports of the 2 RAMs in each column are connected by an XOR gate. The address on Port 1 controls the address of the write port of the bottom row of RAMs. The address on Port 1 also controls the address of the read ports of the left column of RAMs. Similarly, the address on Port 2 controls the address of the write ports of the top row of RAMs. The address on Port 2 also controls the address of the read ports of the right column of RAMs. This may make more sense with the example in \figurename~\ref{fig:xorram}. \par
 %Since the RAMs on the diagonal RAM$_{1,1}$ and RAM$_{2,2}$ have 
-This may make more sense with the example in \figurename~\ref{fig:xorram}.
 \begin{figure}
     \begin{subfigure}{.5\linewidth}
         \begin{tikzpicture}[scale=3]
@@ -443,7 +452,7 @@ This may make more sense with the example in \figurename~\ref{fig:xorram}.
         }{}
 
         \end{tikzpicture}
-        \caption{Clock Cycle}
+        \caption{On the first clock cycle, Port 1 receives a request for cell 1 and Port 2 receives a request for cell 3.}
         \label{fig:xorram0}
     \end{subfigure}
     \begin{subfigure}{.5\linewidth}
@@ -527,7 +536,7 @@ This may make more sense with the example in \figurename~\ref{fig:xorram}.
         }{}
 
         \end{tikzpicture}
-        \caption{Clock Cycle}
+        \caption{On the second clock cycle, Port 2 receives a request for cell 1 and Port 1 does not receive a request.}
         \label{fig:xorram1}
     \end{subfigure}
     \begin{subfigure}{.5\linewidth}
@@ -611,7 +620,7 @@ This may make more sense with the example in \figurename~\ref{fig:xorram}.
         }{}
 
         \end{tikzpicture}
-        \caption{Clock Cycle}
+        \caption{On the third clock cycle, Port 1 receives a request for cell 0 and Port 2 does not receive a request.}
         \label{fig:xorram2}
     \end{subfigure}
     \begin{subfigure}{.5\linewidth}
@@ -695,9 +704,9 @@ This may make more sense with the example in \figurename~\ref{fig:xorram}.
         }{}
 
         \end{tikzpicture}
-        \caption{Clock Cycle}
+        \caption{On the fourth clock cycle, neither Port 1 or Port 2 receives a request.}
         \label{fig:xorram3}
     \end{subfigure}
-    \caption{The operation of the clever architecture.}
+    \caption[Dual port RAM with zero clock cycle read latency]{This example shows 4 clock cycles of operation of a $1\times 5$ dual port RAM, created by combining 4 pseudo dual-port RAMs.}
     \label{fig:xorram}
 \end{figure}
