@@ -44,25 +44,25 @@ At this point we have a traversal that abides by the rules needed for the multip
 \begin{threeparttable}
 \caption{Detailed analysis of index compression}
 \label{tbl:index}
-\begin{tabular}{ccccccccc}
+\begin{tabular}{cccccccc}
 \hline
-\bfseries Matrix & \bfseries \tikz \node[rotate=90]{COO}; & \bfseries \tikz \node[rotate=90]{CSR}; & \bfseries \tikz \node[rotate=90]{CSR.gz}; & \bfseries \tikz \node[rotate=90]{Row major\tnote{b}}; & \bfseries \tikz \node[rotate=90]{Column row-16\tnote{b}}; & \bfseries \tikz \node[rotate=90]{Column row-256\tnote{b}}; & \bfseries \tikz \node [rotate=90]{Column row-1024\tnote{b}}; & \bfseries \tikz \node[rotate=90]{\shortstack{Experimental\\w/column row-16}}; \\
+\bfseries Matrix & \bfseries \tikz \node[rotate=90]{COO}; & \bfseries \tikz \node[rotate=90]{CSR}; & \bfseries \tikz \node[rotate=90]{CSR.gz}; & \bfseries \tikz \node[rotate=90]{Row major\tnote{b}}; & \bfseries \tikz \node[rotate=90]{Column row-16\tnote{b}}; & \bfseries \tikz \node[rotate=90]{Column row-256\tnote{b}}; & \bfseries \tikz \node [rotate=90]{Column row-1024\tnote{b}};  \\
 \hline
-dense2 & 8.00 & 4.00 & 0.03 & 0.00 & 0.00 & 0.00 & 0.00 & 0.13\\
-pdb1HYS & 8.00 & 4.03 & 0.14 & 0.06 & 0.05 & 0.05 & 0.06 & 0.21\\
-consph & 8.00 & 4.06 & 0.19 & 0.13 & 0.10 & 0.11 & 0.12 & 0.30\\
-cant & 8.00 & 4.06 & 0.40 & 0.12 & 0.10 & 0.11 & 0.11 & 0.31\\
-pwtk & 8.00 & 4.08 & 0.17 & 0.09 & 0.05 & 0.06 & 0.07 & 0.22\\
-rma10\ & 8.00 & 4.08 & 0.20 & 0.11 & 0.08 & 0.09 & 0.10 & 0.28\\
-qcd5\_4 & 8.00 & 4.10 & 0.31 & 0.24 & 0.16 & 0.20 & 0.22 & 0.46\\
-shipsec1 & 8.00 & 4.16 & 0.86 & 0.41 & 0.27 & 0.34 & 0.37 & 0.72\\
-mac\_econ\_fwd500 & 8.00 & 4.65 & 1.48 & 0.77 & 0.56 & 0.61 & 0.64 & 1.16\\
-mc2depi & 8.00 & 5.00 & 1.78 & 1.11 & 0.50 & 0.81 & 0.88 & 1.72\\
-cop20k\_A & 8.00 & 4.15 & 1.07 & 0.58 & 0.42 & 0.49 & 0.53 & 0.90\\
-scircuit & 8.00 & 4.71 & 1.61 & 0.85 & 0.48 & 0.58 & 0.66 & 1.10\\
-webbase-1M & 8.00 & 5.29 & 1.35 & 1.57 & 0.46 & 0.55 & 0.64 & 1.22\\
+dense2 & 8.00 & 4.00 & 0.03 & 0.00 & 0.00 & 0.00 & 0.00 \\
+pdb1HYS & 8.00 & 4.03 & 0.14 & 0.06 & 0.05 & 0.05 & 0.06 \\
+consph & 8.00 & 4.06 & 0.19 & 0.13 & 0.10 & 0.11 & 0.12 \\
+cant & 8.00 & 4.06 & 0.40 & 0.12 & 0.10 & 0.11 & 0.11 \\
+pwtk & 8.00 & 4.08 & 0.17 & 0.09 & 0.05 & 0.06 & 0.07 \\
+rma10\ & 8.00 & 4.08 & 0.20 & 0.11 & 0.08 & 0.09 & 0.10 \\
+qcd5\_4 & 8.00 & 4.10 & 0.31 & 0.24 & 0.16 & 0.20 & 0.22 \\
+shipsec1 & 8.00 & 4.16 & 0.86 & 0.41 & 0.27 & 0.34 & 0.37 \\
+mac\_econ\_fwd500 & 8.00 & 4.65 & 1.48 & 0.77 & 0.56 & 0.61 & 0.64 \\
+mc2depi & 8.00 & 5.00 & 1.78 & 1.11 & 0.50 & 0.81 & 0.88 \\
+cop20k\_A & 8.00 & 4.15 & 1.07 & 0.58 & 0.42 & 0.49 & 0.53 \\
+scircuit & 8.00 & 4.71 & 1.61 & 0.85 & 0.48 & 0.58 & 0.66 \\
+webbase-1M & 8.00 & 5.29 & 1.35 & 1.57 & 0.46 & 0.55 & 0.64 \\
 \hline
-average\tnote{a} & 8.00 & 4.36 & 0.80 & 0.50 & 0.27 & 0.33 & 0.37 & 0.72\\
+average\tnote{a} & 8.00 & 4.36 & 0.80 & 0.50 & 0.27 & 0.33 & 0.37 \\
 
 \hline
 \end{tabular}
@@ -73,7 +73,7 @@ average\tnote{a} & 8.00 & 4.36 & 0.80 & 0.50 & 0.27 & 0.33 & 0.37 & 0.72\\
 \end{threeparttable}
 \end{table*}
 
-Many papers use delta compression \cite{prelim:townsend, prelim:kourtis}. Delta compression stores the distance between the previous and current element. This results in smaller values that require fewer bits. The overhead of encoding the bit lengths varies among the different schemes. The storage size per element of these delta values using only the bits necessary are in column 5 of Table~\ref{tbl:index} (this does not include overhead).\par
+Many papers use delta compression \cite{prelim:townsend, prelim:kourtis, prelim:kestur}. Delta compression stores the distance between the previous and current element. This results in smaller values that require fewer bits. The overhead of encoding the bit lengths varies among the different schemes. The storage size per element of these delta values using only the bits necessary are in column 5 of Table~\ref{tbl:index} (this does not include overhead).\par
 We also choose to use the general compression program gzip in the comparison as well. Again table \ref{tbl:index} shows the compression of gzip on top of the CSR format. gzip does very well, in one case (webbase-1M) even takes less space than storing only delta bits. This is particularly surprising considering that extra overhead is needed to decode these delta bits. The reason this occurs is because large delta values can represent a short vertical jump. (We start to see the disadvantage of row major traversal.) gzip remembers previous column indexes and therefore can compress them easily.\par
 \begin{sidewaystable}
 \centering
@@ -82,7 +82,7 @@ We also choose to use the general compression program gzip in the comparison as 
 \label{tbl:indexDist}
 \begin{tabular}{cccccccccccc}
 \hline
-\bfseries Matrix & \bfseries 0 & \bfseries 1 & \bfseries 2 & \bfseries 3 & \bfseries 4 & \bfseries 5 & \bfseries 6 &\bfseries 7 & \bfseries 8 & \bfseries 9 & \bfseries 9+\\
+\bfseries Matrix & \bfseries 1 & \bfseries 2 & \bfseries 3-4 & \bfseries 5-8 & \bfseries 9-16 & \bfseries 17-32 & \bfseries 33-64 &\bfseries 65-128 & \bfseries 129-256 & \bfseries 257-512 & \bfseries 512+\\
 \hline
 dense2 & 100.00\% & 0.00\% & 0.00\% & 0.00\% & 0.00\% & 0.00\% & 0.00\% & 0.00\% & 0.00\% & 0.00\% & 0.00\% \\
 pdb1HYS & 89.23\% & 0.44\% & 2.39\% & 2.43\% & 4.77\% & 0.01\% & 0.19\% & 0.09\% & 0.13\% & 0.05\% & 0.26\% \\
@@ -99,13 +99,6 @@ scircuit & 37.71\% & 3.00\% & 2.71\% & 2.62\% & 25.65\% & 8.14\% & 3.45\% & 2.71
 webbase-1M & 46.55\% & 2.40\% & 1.70\% & 1.27\% & 5.57\% & 30.67\% & 0.74\% & 0.50\% & 0.36\% & 0.25\% & 9.99\% \\
 \hline
 average\tnote{a} & 58.11\% & 2.72\% & 3.09\% & 3.32\% & 15.16\% & 9.54\% & 1.39\% & 0.98\% & 0.85\% & 0.62\% & 4.22\% \\
-
-\hline
-\shortstack{Unary Codes\\Implied Probability} & 50\% & 25\% & 12.5\% & 6.25\% & 3.13\% & 1.56\% & 0.78\% & 0.39\% & 0.20\% & 0.10\% & 0.05\% \\
-%TODO: DELTA CODES\\
-%TODO: GAMMA CODES\\
-%TODO: OMEGA CODES\\
-%TODO: REORG\\
 \hline
 \end{tabular}
 \begin{tablenotes}
@@ -115,20 +108,20 @@ average\tnote{a} & 58.11\% & 2.72\% & 3.09\% & 3.32\% & 15.16\% & 9.54\% & 1.39\
 \end{sidewaystable}%
 It seems hard to believe that gzip would be the best compression scheme. However, we notice column row traversal has smaller deltas than row major traversal. The Table~\ref{tbl:indexDist} shows this distribution. This is because column row traversal does make vertical steps.
 \section{Row Column Row (RCR) Traversal}
-\par Column row traversal does improve the index compression for all matrices and a significant improvement for some. However, it is disappointing to see that larger column heights lead to worse performance. To keep the larger column heights for better vector reuse, but still achieve small deltas we propose short row traversal in the column traversal. In other words, row column row (RCR) traversal. The row width will be experimentally choosen, but 16 seems like a good guess. This means 16 vector values instead of 1 need to be cached, but this seems achievable.
+\par Column row traversal does improve the index compression for all matrices and a significant improvement for some. However, it is disappointing to see that larger column heights lead to worse performance. To keep the larger column heights for better vector reuse, but still achieve small deltas we propose short row traversal in the column traversal. In other words, row column row (RCR) traversal. We experimentally choose the row width to be 8 (\figurename \ref{}). This means 8 vector values instead of 1 need to be cached. We discuss this hardware structure in Section \ref{}.
 \par To illustrate let us look at the traversal in the example matrix. In this example we set the row and column parameters to 2 and 4 respectfully. In this case the RCR traversal for the example back in Equation~\ref{eqn:example} is:\\
 VALUES: $A_{11}$, $A_{32}$, $A_{41}$, $A_{14}$, $A_{33}$, $A_{25}$, $A_{36}$, $A_{45}$, $A_{17}$, $A_{28}$, $A_{37}$, $A_{62}$, $A_{72}$, $A_{53}$, $A_{54}$, $A_{73}$, $A_{83}$, $A_{84}$, $A_{65}$, $A_{76}$, $A_{85}$, $A_{86}$, $A_{57}$, $A_{58}$, $A_{78}$
 
 \section{Encoding Deltas}
-However, it does not fix the issue that extra overhead is needed to decode the delta bits. We need to create our own encoding scheme. The rest of this section describes a potential encoding scheme. To reduce the overhead we will use a variable sized encoding scheme. We looked at the distribution of bit lengths over all the matrices in the test cases. \par
+However, it does not fix the issue that extra overhead is needed to decode the delta bits. We need to create our own encoding scheme. The rest of this section describes this encoding scheme. To reduce the overhead we will use a variable sized encoding scheme. We looked at the distribution of bit lengths over all the matrices in the test cases. \par
 
 %TODO: split index and value analysis
 %COO (indicies only), CSR, COO+gz, CSR+gz, delta, delta+gz, R3, R3+gz, values only, 256 mc, 66k mc var index, fpc
 
 
-The easiest trend to see from the distribution of bits in Table \ref{tbl:index} is that more than half of the elements usually occur immediately after another element. So we choose to simply encode these as a $1_2$. Now that we use $1_2$ as a code, in order for the codes to be uniquely decoded, all the other codes must have a leading 0 (eg $110_2$, $00_2$). \par
-% TODO: Encoding schemes unary...\par
-Our second observation is that bit length groups can be combined at little cost. For example 6 bit deltas and a 7 bit delta can both be encoded as a 7 bit delta. This wastes 1 bit of the 6 bit delta encoded as 7 bits. So grouping by 2s would waste an average of 0.5 bits. Then grouping by 3s wastes 1 bit per element. Groups of 4 wastes 1.5 bits, ect. So there is a trade off between using more codes, therefore longer codes, and wasting bits due to group size. Groups of 3 seems to work nicely.\par
-Our third observation was that longer delta lengths generally occur less frequently. The frequency is similar to a exponential decreasing function. So we made the codes larger for the larger deltas [\cite{prelim:salomon}].\\
-\indent We could use the following encoding: 0 bits : $1_2$, 1-3 bits : $10_2$, 4-6 bits : $100_2$, 7-9 bits : $1000_2$ ect. In other words: a one followed by $N$ zeros, where $N$ is the $N^{th}$ group of 3 delta lengths. The last column of Table~\ref{tbl:index} shows the performance of this scheme.
-
+One of the easiest trend to see from the distribution of bits in Table \ref{tbl:index} is that most deltas are less than 32.% TODO: describe sceme.
+%\section{Hardware Decoding}
+%\label{sec:fzipdecoder}
+%We choose this compression scheme with decompression in mind. The decoding must decode the Huffman encoded stream and the argument (not-encoded) stream. Our design has 3 parts: first, decoding the Huffman codes, second, retrieving an argument if needed, and third, converting the delta codes into matrix indices.
+%\subsection{Huffman Decoder}
+%To understand our huffman decoder let us assume all the codes 

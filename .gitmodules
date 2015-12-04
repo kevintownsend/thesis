@@ -1,0 +1,3 @@
+[submodule "repos/spMatrixHelp"]
+	path = repos/spMatrixHelp
+	url = git@github.com:kevintownsend/spMatrixHelp.git
