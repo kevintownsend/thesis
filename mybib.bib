@@ -24,6 +24,16 @@ pages={1-8}}
     pages = {228-235},
 }
 
+@article{prelim:banescu,
+    author = {S Banescu and F De Dinechin and Bogdan Pasca and Radu Tudoran},
+    journal = ACM_M_CAN,
+    volume={38},
+    number={4},
+    month=sep,
+    year={2010},
+    pages={73-79}
+}
+
 @techreport{prelim:bell,
     author = {Nathan Bell and Michael Garland},
     title = {Efficient Sparse Matrix-Vector Multiplication on {CUDA}},
@@ -72,15 +82,6 @@ pages={161-165},}
     month = jan,
     pages = {115-126}}
 
-@manual{prelim:convey,
-title = {Convey Reference Manual},
-edition = {1.1},
-organization = {Convey},
-address = {Richardson, TX},
-month = may,
-year = {2012},
-}
-
 @techreport{prelim:davis0,
     author = {John D Davis and Eric S Chung},
     month = sep,
@@ -99,13 +100,34 @@ number = {1},
 year = {2011},
 url = {http://www.cise.ufl.edu/research/sparse/matrices},}
 
-@inproceedings{prelime:deLorimier,
+@article{prelim:dedinechin,
+    author = {Florent de Dinechin and Bogdan Pasca},
+    title = {Designing Custom Arithmetic Data Paths with {FloPoCo}},
+    journal = IEEE_M_DTC,
+    volume = 28,
+    number = 4,
+    pages = {18-27},
+    year = 2011,
+    month = jul
+}
+
+@inproceedings{prelim:dedinechin2,
+    author = {Florent de Dinechin and Hong Diep Nguyen and Bogdan Pasca},
+    title = {Pipelined {FPGA} adders},
+    booktitle = IEEE_C_FPL,
+    year = {2010},
+    month = aug,
+    pages = {422-427}
+}
+
+
+@inproceedings{prelim:deLorimier,
  author = {deLorimier, Michael and DeHon, Andr{\'e}},
  title = {Floating-point sparse matrix-vector multiply for {FPGA}s},
  booktitle = ACM_C_FPGA,
  year = {2005},
  pages = {75-85},
-} 
+}
 
 @mastersthesis{prelim:gerards,
            month = aug,
@@ -145,17 +167,6 @@ pages={283 -292},}
 }
 
 
-@manual{prelim:intel,
-	title = {Intel Math Kernel Library Reference Manual},
-	edition = {11},
-	organization = {Intel},
-	year = {2012},
-	url = {http://software.intel.com/}
-}
-
- 
-
-
 @INPROCEEDINGS{prelim:karakasis, 
 author={Karakasis, V. and Goumas, G. and Koziris, N.}, 
 booktitle=SIAM_C_CSE,
@@ -172,11 +183,6 @@ title={Improving the Performance of Multithreaded Sparse Matrix-Vector Multiplic
 year={2008}, 
 month=sep, 
 pages={511-519}}
-
-@misc{prelim:matrixmarket,
-title={{Matrix Market}},
-organization={National Institute of Science and Technology},
-url={math.nist.gov/MatrixMarket},}
 
 @inproceedings{prelim:monakov,
 author={Alexander Monakov},
@@ -254,6 +260,13 @@ volume={59},
 number={1}, 
 pages={113-123}}
 
+@inproceedings{prelim:umuroglu,
+    author={Yuman Umuroglu and Magnus Jahre},
+    booktitle=ACM_C_ARC,
+    title={A Vector Caching Scheme for Streaming FPGA SpMV Accelerators},
+    year={2015},
+    month=mar,
+    pages={15-26}}
 
 @ARTICLE{prelim:vangal, 
 author={Vangal, S.R. and Hoskote, Y.V. and Borkar, N.Y. and Alvandpour, A.}, 
@@ -264,23 +277,6 @@ month=oct,
 volume={41}, 
 number={10}, 
 pages={2314-2323},} 
-
-@manual{prelim:virtex5,
-title = {Virtex-5 Family Overview},
-howpublished = {DS100},
-edition = {5.0},
-organization = {Xilinx},
-month = feb,
-year = {2009},
-}
-
-@manual{prelim:virtex6,
-title = {Virtex-6 Family Overview},
-howpublished = {DS150},
-edition = {2.4},
-organization = {Xilinx},
-month =jan,
-year = {2012},}
 
 @INPROCEEDINGS{prelim:wang, 
 author={Ying Wang and Hongping Yan and Chunhong Pan and Shiming Xiang}, 
@@ -350,16 +346,6 @@ booktitle = IEEE_C_HPCA,
 year = "2001",
 month = jan,
 pages = {207-216},}
-
-@electronic{prelim:bzip,
-title = {Official Home Page for {bzip2}},
-url = {http://www.bzip.org/},
-year = "2013",}
-
-@electronic{prelim:gzip,
-title = {The {gzip} home page},
-url = {http://www.gzip.org/},
-year = "2013",}
 
 @inproceedings{prelim:Ke,
 author = {J Ke and M Burtscher and E Speight},
@@ -501,20 +487,6 @@ year = "2012",
 month = dec,
 pages = {313-318},}
 
-
-@manual{prelim:altera,
-    title = {Stratix V Device Overview},
-    howpublished = {{SV51001}},
-    organization = {Alera},
-    year = {2015}
-}
-
-@manual{prelim:xilinx,
-    title = {7 Series FPGAs Overview},
-    howpublished = {{DS180}},
-    organization = {Xilinx},
-    year = {2014}
-}
 
 @inproceedings{prelim:abdelhadi,
     author = {Ameer M S Abdelhadi and Guy G F Lemieux},

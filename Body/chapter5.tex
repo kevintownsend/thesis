@@ -1,5 +1,27 @@
 \chapter{MATRIX COMPRESSION}
 \label{chp:compression}
+Although we address this pillar last we view it as the most important.
+\section{Related Work}
+We previously implemented matrix compression in \cite{}. However, we made the mistake of combining the two types of compression, index and floating point into one scheme. This simplified some aspects of the design. For example, this compression only needed to keep track of one data stream. Combining the two parts also makes sense if the two are correlated. In the extreme case the values in matrix could be calculated from the indices. However, we do not see an easy way to use this for general sparse matrix compression.
+
+All other work treat index compression and floating point compression seperately and most work ignores floating point compression completely. We also use general compression programs like gzip and bzip for comparison.
+
+%TODO: other works
+%
+%The two delta streams.
+%
+%gzip
+%
+%bzip
+%
+%microsoft
+%
+%bakos
+%
+%others
+%
+%As we mentioned we also treat index compression seperately.
+
 Not much work focuses solely on matrix compression. However, matrix compression for SpMV has been studied. Most approaches split the problem into matrix index compression and value compression. We agree with this approach. In $R^3$, we made the mistake of combining the indices and values of sparse matrices into one compression scheme. 
 \par We discuss floating point value compression in the next chapter. In this chapter we discuss index compression, but first we discuss matrix traversal. \par
 This chapter will show matrix traversal and index compression are linked. We use deltas to compress indices. In $R^3$ we use a traversal called global row major local column major (GRMLCM). For the rest of the paper we call this traversal column row traversal, which we discussed in Section~\ref{sec:colrow}. \par
@@ -107,11 +129,6 @@ average\tnote{a} & 58.11\% & 2.72\% & 3.09\% & 3.32\% & 15.16\% & 9.54\% & 1.39\
 \end{threeparttable}
 \end{sidewaystable}%
 It seems hard to believe that gzip would be the best compression scheme. However, we notice column row traversal has smaller deltas than row major traversal. The Table~\ref{tbl:indexDist} shows this distribution. This is because column row traversal does make vertical steps.
-\section{Row Column Row (RCR) Traversal}
-\par Column row traversal does improve the index compression for all matrices and a significant improvement for some. However, it is disappointing to see that larger column heights lead to worse performance. To keep the larger column heights for better vector reuse, but still achieve small deltas we propose short row traversal in the column traversal. In other words, row column row (RCR) traversal. We experimentally choose the row width to be 8 (\figurename \ref{}). This means 8 vector values instead of 1 need to be cached. We discuss this hardware structure in Section \ref{}.
-\par To illustrate let us look at the traversal in the example matrix. In this example we set the row and column parameters to 2 and 4 respectfully. In this case the RCR traversal for the example back in Equation~\ref{eqn:example} is:\\
-VALUES: $A_{11}$, $A_{32}$, $A_{41}$, $A_{14}$, $A_{33}$, $A_{25}$, $A_{36}$, $A_{45}$, $A_{17}$, $A_{28}$, $A_{37}$, $A_{62}$, $A_{72}$, $A_{53}$, $A_{54}$, $A_{73}$, $A_{83}$, $A_{84}$, $A_{65}$, $A_{76}$, $A_{85}$, $A_{86}$, $A_{57}$, $A_{58}$, $A_{78}$
-
 \section{Encoding Deltas}
 However, it does not fix the issue that extra overhead is needed to decode the delta bits. We need to create our own encoding scheme. The rest of this section describes this encoding scheme. To reduce the overhead we will use a variable sized encoding scheme. We looked at the distribution of bit lengths over all the matrices in the test cases. \par
 
@@ -125,3 +142,4 @@ One of the easiest trend to see from the distribution of bits in Table \ref{tbl:
 %We choose this compression scheme with decompression in mind. The decoding must decode the Huffman encoded stream and the argument (not-encoded) stream. Our design has 3 parts: first, decoding the Huffman codes, second, retrieving an argument if needed, and third, converting the delta codes into matrix indices.
 %\subsection{Huffman Decoder}
 %To understand our huffman decoder let us assume all the codes 
+%\section{Results}

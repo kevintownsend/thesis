@@ -1,5 +1,5 @@
 \chapter{BACKGROUND}
-\label{chapter:background}
+\label{chp:background}
 In its simplest form sparse matrix vector multiplication is the operation $y=Ax$, where A is an $M \times N$, $x$ is a vector of length $N$, and $y$ is a vector of length $M$. As Equation 2.1 shows, matrix vector multiplication is a series of dot products.
 \begin{equation}
 \left[\begin{IEEEeqnarraybox*}[][c]{,c,}
@@ -54,14 +54,70 @@ COLUMN: 0, 3, 6, 4, 7, 1, 2, 5, 6, 0, 4, 2, 3, 6, 7, 1, 4, 1, 2, 5, 7, 2, 3, 4, 
 VALUE: $A_{11}$, $A_{14}$, $A_{17}$, $A_{25}$, $A_{28}$, $A_{32}$, $A_{33}$, $A_{36}$, $A_{37}$, $A_{41}$, $A_{45}$, $A_{53}$, $A_{54}$, $A_{57}$, $A_{58}$, $A_{62}$, $A_{65}$, $A_{72}$, $A_{73}$, $A_{76}$, $A_{78}$, $A_{83}$, $A_{84}$, $A_{85}$, $A_{86}$ \par
 You will notice that the elements are traversed in row-major form. Row-major traversal starts at the left most element of the first row ($A_{11}$). Then proceeds to the next element on its right ($A_{14}$). After arriving at the last element of a row the next element would be the left most element in the row below it ($A_{25}$). This is simple and convenient, but not a required way to traverse the matrix. 
 \par Calculating SpMV with this matrix format is straight forward and much faster than if the whole matrix was used. SpMV takes $nnz$ multiplications and $nnz-M$ additions, where $nnz$ is the number of non-zero values in the matrix and $M$ is the height of the matrix. This totals $2\times nnz - M$ floating point operations. However, the convention in the field uses a slightly incorrect but simpler $2\times nnz$ to report performance, which we use to report our performance. The difference is usually only a slight over estimate of the actual performance, but the difference could be significant if $nnz/M$ (number of non-zero elements per row) is small.
+\begin{figure}
+\centering
+\begin{tikzpicture}[blueRect/.style={draw,rectangle,fill=blue!30,thick,minimum width=2cm, minimum height=.7cm}, %
+redRect/.style={draw,trapezium,fill=red!30,thick,minimum width=3cm, minimum height=.7cm}, %
+data/.style={draw,trapezium,fill=blue!30,thick,trapezium left angle=70,trapezium right angle=-70,minimum height=.7cm,minimum width=1cm}]
+%\clip (-1.15cm,.45cm) rectangle (\linewidth, -6.35cm);
+\tikzstyle{line} = [draw, thick, -latex' ,shorten >=2pt];
+\node[draw,ellipse,fill=blue!30, inner ysep=0](A){\shortstack{$A$ Matrix \\ Data}};
+\node[blueRect, inner ysep=0](B)[right=of A]{Decoder};
+\node[data, inner ysep=0](C)[right=of B]{\shortstack{Column\\Data}};
+\node[blueRect, inner ysep=0](D)[below=of C]{\shortstack{$x$ Memory\\Request}};
+\node[data, inner ysep=0](E)[below=of D]{\shortstack{$x$ Vector \\Data}};
+\node[data, inner ysep=2](F)[below=of A]{\shortstack{Matrix\\Value\\Data}};
+\node[data, inner ysep=0, yshift = .2cm](G)[below=of B]{\shortstack{Row\\Data}};
+\node[blueRect, inner ysep=0, yshift = .2cm](H)[below=of G]{Multiplier};
+%\node[data](I)[below=of H]{Product};
+\node[draw,diamond,fill=blue!30, inner sep=0, yshift=.5cm](J)[below=of H]{\shortstack{Intermediator;\\To Result\\Or Adder?}};
+%\node[data](K)[below=of J]{
+\node[blueRect, yshift = -1cm](L)[above left=of J]{Adder};
+\node[draw,ellipse,fill=blue!30, inner ysep=0](M)[right=of J]{\shortstack{Result\\$y$ Vector}};
+%\node(N)[left=of L]{};
+
+\tikzstyle{every path}=[line]
+\path    (A)  --  (B);
+\path  (B) -- (C);
+\path (C) -- (D);
+\path (D) -- (E);
+\path (B) -- (F);
+\path (B) -- (G);
+\path (F) |- (H);
+\path (G) -- (H);
+\path (E.west) |- (H);
+\path (H) -- (J);
+\path (J) -| (L);
+\path (L) -| (J.north west);
+\path (J) -- (M);
+
+\end{tikzpicture}
+\caption[SpMV dataflow diagram]{The dataflow is mostly the same for all SpMV implementations. Often the matrix is not stored in COO format and needs be decoded into each matrix's column, row and floating point value. As the dataflow shows, the processor needs the column data before accessing the $x$ vector data.}
+\label{fig:dataflow}
+\end{figure}%
 \section{CPU}
+Computing SpMV on any platform follows the dataflow outlined in \figurename~\ref{fig:dataflow}. It only takes a couple lines to write an SpMV function in c:
+\begin{verbatim}
+void spmv(double* y, double* x, int* row, int* column, double* value, int nnz,
+        int height){
+    // Zero the y vector.
+    for(int i = 0; i < height; ++i){
+        y[i] = 0;
+    }
+    // Compute SpMV.
+    for(int i = 0; i < nnz; ++i){
+        y[row[i]] = y[row[i]] + value[i] * x[column[i]];
+    }
+}
+\end{verbatim}
+In fact, this simple code is not that much worse than highly optimized CPU implementations.
 \par The sparsity of the matrix causes CPUs to perform below their potential. A recent Intel publication using 2 Xeon E5-2699 v3 processors show an average performance of 1 TFLOP (1,000 GFLOPs) for matrix matrix multiplication but publishes an average performance of 27 GFLOPS for SpMV.
-\par To understand this look at the equation \ref{eqn:example} again and count the number of times each value is accessed. The values in the matrix only get accessed once and the values in the vector only get accessed a couple times. This remains the same for large matrices, because, as mentioned, the number of non-zero values per row ($nnz/M$) often grows slowly for larger matrices. This means the computation operations to memory operations ratio is low. Compare this to matrix-matrix multiplication where the ratio is high and each CPU can perform at 500 GFLOPs, almost the limit of the CPU.
+\par To understand this look at the equation~\ref{eqn:example} again and count the number of times each value is accessed. The values in the matrix only get accessed once and the values in the vector only get accessed a couple times. This remains the same for large matrices, because, as mentioned, the number of non-zero values per row ($nnz/M$) often grows slowly for larger matrices. This means the computation operations to memory operations ratio is low. Compare this to matrix-matrix multiplication where the ratio is high and each CPU can perform at 500 GFLOPs, almost the limit of the CPU.
 \par The effect of this small ratio effects the CPU less when everything can fit in cache. Although it still exists, because L3 cache has some latency.
-\par There exists several optimizations to improve the performance of SpMV. We cover CPU and GPU optimizations first. As we cover techniques we also look at how they could apply to FPGA implementations. If you are impatient feel free to skip ahead to Chapter \ref{chp:method}, which talks about our approach to computing SpMV on FPGAs.
+\par There exists several optimizations to improve the performance of SpMV. We cover CPU and GPU optimizations first. As we cover techniques we also look at how they could apply to FPGA implementations. If you are impatient feel free to skip ahead to Chapter~\ref{chp:method}, which talks about our approach to computing SpMV on FPGAs.
 
 \section{Compressed Sparse Row Format (CSR)}
-The first SpMV optimization, compressed sparse row (CSR), is the simplest. The optimization compresses the row indices. The column and value arrays are the same as COO. A compressed row array replaces the row array. The row array usually does not change from one element to the next and when it does it only changes by increasing the index by one. CSR format stores the traversal index of the first element of each row instead of the row index of each element. The traversal index equals the number of non-zero elements that are traversed before the current element is reached. We use the term traversal index to prevent confusion when mentioning row and column index. This change saves up to 4 bytes per element or 25\% over COO format. The CSR format of the matrix in equation \ref{eqn:example} is shown: \\
+The first SpMV optimization, compressed sparse row (CSR), is the simplest. The optimization compresses the row indices. The column and value arrays are the same as COO. A compressed row array replaces the row array. The row array usually does not change from one element to the next and when it does it only changes by increasing the index by one. CSR format stores the traversal index of the first element of each row instead of the row index of each element. The traversal index equals the number of non-zero elements that are traversed before the current element is reached. We use the term traversal index to prevent confusion when mentioning row and column index. This change saves up to 4 bytes per element or 25\% over COO format. The CSR format of the matrix in equation~\ref{eqn:example} is shown: \\
 COMPRESSED ROW: 3, 5, 9, 11, 15, 17, 21, 25 \\
 COLUMN: 0, 3, 6, 4, 7, 1, 2, 5, 6, 0, 4, 2, 3, 6, 7, 1, 4, 1, 2, 5, 7, 2, 4, 5\\ 
 VALUE: $A_{11}$, $A_{14}$, $A_{17}$, $A_{25}$, $A_{28}$, $A_{32}$, $A_{33}$, $A_{36}$, $A_{37}$, $A_{41}$, $A_{45}$, $A_{53}$, $A_{54}$, $A_{57}$, $A_{58}$, $A_{62}$, $A_{65}$, $A_{72}$, $A_{73}$, $A_{76}$, $A_{78}$, $A_{83}$, $A_{84}$, $A_{85}$, $A_{86}$ \par
@@ -246,8 +302,59 @@ So far, all the matrix formats store indices as 32-bit values, but this seems wa
    COMPRESSED ROW: 3, 5, 9, 11, 15, 17, 21, 25 \\
 DELTAS: 1, 3, 3, 5, 3, 2, 1, 3, 1, 1, 4, 3, 1, 3, 1, 2, 3, 2, 1, 3, 2, 3, 1, 1, 1\\
 OMEGA CODES: 0, 101, 101, 11001, 101, 100, 0, 101, 0, 0, 11000, 101, 0, 101, 0, 100, 101, 100, 0, 101, 100, 101, 0, 0, 0 \par
+\begin{figure}
+\centering
+\begin{tikzpicture}
+\draw[step=1.0,gray,very thin] (0,0) grid (6.5,4.5);
+\draw [->,thick] (0,0) to (0,5);
+\draw [->,thick] (0,0) to (7,0);
+\foreach \x/\xtext in {0/1,1/10,2/100,3/1\,000,4/10\,000,5/100\,000,6/1\,000\,000}
+	\draw (\x cm, 1pt) -- (\x cm, -1pt) node[anchor=north west,rotate=-30] {$\xtext$};
+\foreach \y/\ytext in {0/0,1/4,2/8,3/12,4/16}
+	\draw (1pt, \y cm) -- (-1pt,\y cm) node[anchor=east] {$\ytext$};
+
+\foreach \i/\x/\y/\m/\s/\t/\a in {
+0/0.0/3.4/dense/1/13.6/.3,%
+1/0.0/3.4/rma10/1/13.6/-.1,%
+2/0.0/3.2/qcd5\_4/1/12.8/-.4,%
+3/2.0293837776852097/3.175/cant/107/12.7/0,%
+6/3.5543680009900878/1.55/mc2depi/3584/6.2/.4,%
+8/5.0730067708393705/1.475/mac\_econ\_fwd500/118306/5.9/.3,%
+9/5.123400785682125/1.975/shipsec1/132862/7.9/.5,%
+10/5.433/1.3/raefsky1/271382/5.2/.1,%
+11/5.451272036830906/1.55/scircuit/282665/6.2/.3,%
+12/5.725640521811938/1.225/psmigr\_2/531668/4.9/-.4,%
+13/5.906686753316721/1.6/torso2/806653/6.4/-.1,%
+14/6.197264013258786/2.175/consph/1574940/8.7/.3
+%1/0/3.4/dense/1/13.6/.3, 1/0/3.4/rma10/1/13.6/-.1, 2/0/3.2/qcd5\_4/1/12.8/-.4, 3/2.03/3.175/cant/107/12.7/0, %
+%6/3.5543680009900878/1.55/mc2depi/3584/6.2/.4,%
+%8/5.0730067708393705/1.475/mac\_econ\_fwd500/118306/5.9/.3,%
+%9/5.123400785682125/1.975/shipsec1/132862/7.9/.5,%
+%10/5.451272036830906/1.55/scircuit/282665/6.2/.3,%
+%11/5.725640521811938/1.225/psmigr\_2/531668/4.9/-.3,%
+%12/5.906686753316721/1.6/torso2/806653/6.4/0,%
+%13/6.197264013258786/2.175/consph/1574940/8.7/.3%
+}
+	\draw (\x,\y) [fill=red]circle (3pt) node[anchor=north west,rotate=60,xshift=4pt, yshift=\a cm, fill=white, inner sep=-2pt]{};
+
+%outliers
+\foreach \i/\x/\y/\m/\s/\t/\a in {%
+4/2.828015064223977/0.55/dw8192/673/2.2/.6,%
+5/3.1408221801093106/1.0/t2d\_q9/1383/4.0/-.1,%
+7/4.864689034136851/0.85/epb1/73230/3.4/-.1%
+}
+	\draw (\x,\y) [fill=yellow]circle (3pt) node[anchor=north west,rotate=60,xshift=.4, yshift=\a cm, fill=white, inner sep=-2pt]{};
+
+
+\draw [dashed] (2.4,-.6) -- (2.4,4.8) node [midway,above, sloped, xshift=-.5cm]{$256$};
+\node at (3,-1.1) {Number of Unique Values in Matrix};
+\node at (-.8,2) [rotate=90] {Performance (Gflops)};
+\end{tikzpicture}
+\caption[Effect of value compression on SpMV performance]{Unique values in a matrix vs the performance of $R^3$. Matrices with fewer than 256 unique values (only common elements exist) enables $R^3$ format to compress much better. The \tikz \draw[fill=yellow] circle(3pt);'s are outliers due to their size (see \figurename~\ref{fig:nnzVgflops}).}
+\label{fig:uniqueVgflops}
+\end{figure}%
 \section{Value Compression}
-\par The same paper [\cite{prelim:kourtis}] uses value compression, for the matrix values. Again the details are a little vague, but the idea is to take advantage of the fact values repeat. Even though this saves a lot of space for some matrices the results are again mediocre. Again, FPGAs can dedicate area for the decoder, and can potentially get better speedup results.
+\par The same paper [\cite{prelim:kourtis}] uses value compression, for the matrix values. Again the details are a little vague, but the idea is to take advantage of the fact values repeat. Even though this saves a lot of space for some matrices the results are again mediocre. Again, FPGAs can dedicate area for the decoder, and can potentially get better speedup results. \figurename~\ref{fig:uniqueVgflops} shows the effect of easily compressed values on the performance of our previous work.
 
 \section{Benchmarking}
 \begin{figure}

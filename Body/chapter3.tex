@@ -1,5 +1,99 @@
 \chapter{SpMV on FPGA METHODOLOGY}
 \label{chp:method}
+
+\begin{figure}
+    \centering
+    \begin{tikzpicture}[scale=2]
+        \draw (0,0) rectangle (4,.1);
+        \draw (.1,.1) rectangle (3.9,.2);
+        \draw (.2,.2) rectangle (3.8,.3);
+
+        \draw (.3,.3) rectangle (1.1,.5);
+        \draw (1.6,.3) rectangle (2.4, .5);
+        \draw (2.9, .3) rectangle (3.7, .5);
+        \draw (.4,.5) rectangle (1,2.5);
+        \node at (.7,1.5) [rotate=90]{\shortstack{Matrix\\Traversal}};
+
+        \draw (1.7,.5) rectangle (2.3,2.5);
+        \node at (2,1.5) [rotate=90]{\shortstack{Multiply-\\accumulator}};
+
+        \draw (3,.5) rectangle (3.6,2.5);
+        \node at (3.3,1.5) [rotate=90]{\shortstack{Matrix\\Compression}};
+
+        \draw (.3,2.5) rectangle (1.1,2.7);
+        \draw (1.6,2.5) rectangle (2.4, 2.7);
+        \draw (2.9, 2.5) rectangle (3.7, 2.7);
+
+        \draw (.2,2.7) -- (3.8,2.7) -- (3.8,3) -- (2,3.7) -- (.2,3) -- cycle;
+        \draw (.3,2.8) -- (3.7,2.8) -- (3.7, 2.92) -- (2,3.59) -- (.3,2.92) -- cycle;
+        \node at (2,3.1) {\shortstack{Computing\\SpMV on FPGAs}};
+    \end{tikzpicture}
+    \caption{Because different aspects limit the performance of SpMV on FPGAs, no one optimization will lead to significant benefit for SpMV. We identified these three optimizations that together lead to a significant performance benefit.}
+    \label{fig:pillars}
+\end{figure}
+
+In the previous chapter, we have discussed how others have approached computing SpMV on FPGAs and other processors. We build upon some of the good ideas and add our own. When these pillars are in place the dataflow of the design still looks the same as other implementations (\figurename~\ref{fig:dataflow}). The architecture diagram also follows the same general flow of the dataflow diagram (\figurename~\ref{fig:SpMV}).
+Three pillars emerged during the design of the hardware description and software: designing the traversal of the matrix, designing the multiply-accumulator, and designing the matrix compression (\figurename~\ref{fig:pillars}). The next three sections describe these pillars and the interactions between them.
+
+\section{First Pillar: Matrix Traversal}
+\par The first pillar, matrix traversal, primarily helps with vector reuse. Column traversal has a major effect on vector reuse. Many papers argue that vector caching is the way to achieve $x$ vector reuse for FPGAs [\cite{prelim:umuroglu, prelim:nagar1}] (TODO: more cites). We disagree. With the ability to use column traversal in a horizontal subsection of say 1000 rows one can perfectly reuse vector values in this section. This requires the storage of 1000 intermediate y values or 8KB. Compare this to caching. Assume there are 10 non-zero elements per row and assume each vector value gets accessed twice. Then to achieve good caching the cache must support 5000 values or 40KB. This also ignores storing the vector indices of the cached values. So, in this example, storing intermediate values is more than 5 times more space efficient than vector caching.
+\par The second advantage of mixing row and column traversal is that it leads to smaller deltas. In this paper, a delta is the traversal distance between a matrix element and its preceding matrix element in the traversal. To achieve high $x$ vector reuse and small deltas we use row-column-row traversal. Chapter \ref{chp:traversal} discusses matrix traversal in detail.
+
+\section{Second Pillar: Multiply-accumulator}
+
+\par The second pillar, the multiply accumulator, has to accumulate multiple rows at a time to allow different traversals (the first pillar). Several multiply-accumulators exists, but they rely on row-major traversal \cite{}. Although, we do use pre-existing floating-point cores created by Flopoco [\cite{}]. We created an IP core called the Intermediator, which stores intermediate $y$ values and allows for row-column-row traversal. Chapter \ref{chp:mac} discusses the multiply-accumulator in detail.
+
+\section{Third Pillar: Matrix Compression}
+\par The third pillar, compression, may be the most important for FPGAs. Compression of the matrix has a large amount of importance, because reading the matrix takes up a majority of the memory bandwidth. The current view in the SpMV field does not count preprocessing of the matrix towards the SpMV runtime. This is because SpMV is usually used in iterative and repetitive methods. We agree with this sentiment.
+\subsection{Index compression}
+\par Using deltas to compress indices is the first and easiest step towards this pillar. Many compression implementations try to align variable length encoding to 4 bit or other size boundaries. We give little regard to boundaries because we find the added compression to be worth the extra FPGA space the decoder needs. Chapter \ref{chp:compression} discusses delta compression in detail.
+%
+\subsection{Floating Point Compression}
+\par Value compression is tricky but has a potential to save large amounts of space and thus memory bandwidth. Values repeat more than one would expect in matrices \cite{}. Taking advantage of this repetition is the biggest step towards good compression. \figurename~\ref{fig:uniqueVgflops} shows how much of an effect this pattern has on the performance of our previous SpMV implementation, $R^3$. Chapter \ref{chp:fzip} discusses floating point compression in detail.
+
+\subsection{Multi-port Shared Memory}
+\par Because good value compression requires a significant amount of on-chip memory space, we designed a shared memory IP block. This means instead of using 1 RAM block on each PE to store the 512 most common floating point values, we use one RAM block per PE to create a large shared memory to store the 8,192 most common floating point values. Chapter \ref{chp:memory} discusses the design of the shared memory IP block.%
+%
+\begin{figure}
+\centering
+\begin{tikzpicture}[scale=1]
+\draw [dashed](-6,0) -- (4,0);
+\node at (.1,-2) {\large \shortstack{External\\Memory}};
+\node at (.1,-1) [draw, trapezium, trapezium right angle=70, trapezium left angle=-70,  minimum width=1.5cm, minimum height=1cm, inner xsep=-7pt](x){$x$ Vector};
+\node at (-3,-1.25) [draw,trapezium, trapezium right angle=70, trapezium left angle=-70,  minimum width=1.5cm, minimum height=1.5cm, inner xsep=-12pt](a){$A$ Matrix};
+\node at (2.5,-1) [draw, trapezium, trapezium right angle=70, trapezium left angle=-70, minimum width=0cm, minimum height=1cm, inner xsep=-7pt](y){$y$ Vector};
+
+\node at (0, 3) {\large $R^3$ Processing Element};
+\draw [dashed] (-6,1.5) -- (-3,1.5);
+\node at (-4.5, 1.5) [draw, rectangle, minimum height=2cm, minimum width=3cm](dec){};
+\node at (-5.3,1.5)[rotate=90, anchor=south,fill=white]{Decoder};
+\node at (-4.5,2) {Value};
+\node at (-4.5,1) {Index};
+\node at (-4.5, 3.5) [color=black](vCache){Shared Memory};
+\path [draw, color=black] (vCache.north east) to (vCache.south east) to (vCache.south west) to (vCache.north west);
+\node at (1,1.5) [draw, rectangle, minimum height=2.1cm, minimum width=5cm, label={[label distance=-.5cm]90:Multiply-Accumulator}](acc){};
+\node at (acc) [draw, rectangle, xshift=1.8cm, yshift=-.2cm, minimum height=1cm](add){Adder};
+\node at (acc) [draw, rectangle, xshift=0cm, yshift=-.2cm, minimum height=1cm](int){\shortstack{Inter-\\mediator}};
+\node at (acc) [draw, rectangle, xshift=-1.8cm, yshift=-.2cm, minimum height=1cm](mult){\shortstack{Multi-\\plier}};
+
+\path [draw, thick, >=stealth',->, shorten >=2pt](a) to [] node[fill=white, inner sep=1pt, pos=.4]{\shortstack{val+\\row+col}}(dec);
+\path [draw, thick, >=stealth',->, shorten >=2pt, label={[above,sloped]{column}}](dec) to [] node[sloped, fill=white, inner sep=1pt]{col} (x);
+\path [draw, thick, >=stealth',->, shorten >=2pt](dec.20) to node[sloped, fill=white, inner sep=1pt]{val} (mult);
+\path [draw, thick, >=stealth',->, shorten >=2pt](dec.-20) to node[sloped, fill=white, inner sep=1pt]{row} (mult);
+\path [draw, thick, >=stealth',->, shorten >=2pt](mult.120) to [bend left = 30] node[sloped, fill=white, inner sep=1pt]{val+row} (int);
+
+\path [draw, thick, >=stealth',->, shorten >=2pt](x) to [] node[sloped, fill=white, inner sep=1pt]{val} (mult);
+\path [draw, thick, >=stealth',->, shorten >=2pt](int.north) to [bend left = 20] node[sloped, fill=white, inner sep=1pt]{val+val+row} (add.50);
+\path [draw, thick, >=stealth',->, shorten >=2pt](add.-50) to [bend left = 40] node[sloped, fill=white, inner sep=1pt]{val+row} (int);
+\path [draw, thick, >=stealth', ->, shorten >= 2pt](int) .. controls (1,0) and (2.1,0) .. node[sloped, fill=white, inner sep=1pt]{val}  (y);
+\path [draw, gray, thick, >=stealth', <->, shorten >=2pt] (vCache) -- (dec);
+
+\end{tikzpicture}
+\caption[Diagram of a single processing element]{A single processing element. The arrows show the flow of data through the processing element. Although this diagram shows the memory access to each of the 3 places in memory as separate, they share one memory port. The diagram also does not show the FIFOs that help keep the pipeline full.}
+\label{fig:SpMV}
+\end{figure}%
+%
+
 \begin{figure}
 \centering
 \begin{tikzpicture}[scale=.6]
@@ -30,12 +124,12 @@
 \foreach \x in {3,8.5,14,19.5}{
     \node at (\x, 3)[draw, fill=white, minimum width=1.8cm, minimum height=1.8cm,inner sep=0,outer sep=0]{\shortstack{Shared\\Memory}};
 }
-\foreach [count=\i] \x in {0,3.3,6.6,...,24}
+\foreach [count=\i] \x in {.5,3.8,7.1,...,25} %0,3.3,6.6,...,24}
 {
     \FPeval{\minus}{round(\i-1,0)};
     %\draw (\x, -2) +(-.6,-.5) [rounded corners=.2cm] rectangle ++(1.2, .5);
     \small
-    \draw (\x, -2) +(.3, 0) node[rectangle,rounded corners=.2cm]{\shortstack{Memory \\Controller\minus}};
+    \draw (\x, -1.5) node[draw, rectangle,rounded corners=.2cm,rotate=90,anchor=east]{\shortstack{Memory \\Controller~\minus}};
     \normalsize
     %\draw (\x, -2) +(.3, 0) node{\shortstack{MC\i}};
 }
@@ -50,147 +144,15 @@
 %\node at (9.25,-.5) [rectangle,fill=white,inner sep=2pt](a){40GB/s Sustained Memory Bandwidth};
 
 \end{tikzpicture}
-\caption[Modified high-level diagram of the Convey HC-2ex]{Our new implementation will have share memory for storing repeating values in the sparse matrices.}
+\caption[Modified high-level diagram of the Convey HC-2ex]{Our implementation has one shared memory for storing repeating values in the sparse matrices.}
 \label{fig:highlevel2}
 \end{figure}
-In the previous chapter, we have discussed how others have approached computing SpMV on FPGAs and other processors. We build upon the good ideas and add our own. We use the Convey HC-2ex, however our high level design changes slightly from our $R^3$ design (\figurename~\ref{fig:highlevel2}).
-\par Our design methodology consists of 3 design pillars. The first pillar is the design of a multiply accumulator that does not stall and maintains multiple intermediate values. The second pillar is the design of a matrix traversal that enables reuse of vector values and improves matrix compression. The third pillar is the design of a matrix compression scheme with a high compression ratio and has hardware amenable decompression.
-\par These pillars rely on each other. The first pillar, the multiply accumulator, has to accumulate multiple rows at a time to allow different traversals (the second pillar). The multiply accumulator also should not stall, or at least rarely stall. A multiply accumulator that stalls regularly can not maintain high throughput.
-\par The second pillar, matrix traversal, primarily helps with vector reuse. Column traversal has a major effect on vector reuse. Many people argue that vector caching is the best way to achieve vector reuse for FPGAs. We disagree. With the ability to use column traversal in a horizontal subsection of say 1000 rows one can perfectly reuse vector values in this section. This requires the storage of 1000 intermediate y values or 8KB. Compare this to caching. Assume there are 10 non-zero elements per row and assume each vector value gets accessed twice. Then to achieve good caching the cache must support 5000 values or 40KB. This also ignores storing the vector indices of the cached values. So, in this example, storing intermediate values is more than 5 times more space efficient than vector caching.
-\par The second advantage of mixing row and column traversal is that it leads to smaller deltas. In this paper, a delta is the traversal distance between a matrix element and its preceding matrix element in the traversal.
-\par The third pillar may be the most important for FPGAs. Compression of the matrix has a large amount of importance, because reading the matrix takes up a majority of the memory bandwidth. The current view in the SpMV field does not count preprocessing of the matrix towards the SpMV runtime. This is because SpMV is usually used in iterative and repetitive methods. We agree with this sentiment.
-\par Using deltas to compress indices is the first and easiest step towards this pillar. Many compression implementations try to align variable length encoding to 4 bit or other size boundaries. We give little regard to boundaries because we find the added compression to be worth the extra FPGA space the decoder needs.
-\begin{figure}
-\centering
-\begin{tikzpicture}
-\draw[step=1.0,gray,very thin] (0,0) grid (6.5,4.5);
-\draw [->,thick] (0,0) to (0,5);
-\draw [->,thick] (0,0) to (7,0);
-\foreach \x/\xtext in {0/1,1/10,2/100,3/1\,000,4/10\,000,5/100\,000,6/1\,000\,000}
-	\draw (\x cm, 1pt) -- (\x cm, -1pt) node[anchor=north west,rotate=-30] {$\xtext$};
-\foreach \y/\ytext in {0/0,1/4,2/8,3/12,4/16}
-	\draw (1pt, \y cm) -- (-1pt,\y cm) node[anchor=east] {$\ytext$};
+\section{High Level Design}
+Designing high performance reconfigurable computing implementations has a general two step process, which we follow. First, design one processing element (PE) to solve the problem (see \figurename~\ref{fig:SpMV}). Second, replicate that PE until all the FPGAs are full. In addition, we have a shared memory (see \figurename~\ref{fig:highlevel2}).
 
-\foreach \i/\x/\y/\m/\s/\t/\a in {
-0/0.0/3.4/dense/1/13.6/.3,%
-1/0.0/3.4/rma10/1/13.6/-.1,%
-2/0.0/3.2/qcd5\_4/1/12.8/-.4,%
-3/2.0293837776852097/3.175/cant/107/12.7/0,%
-6/3.5543680009900878/1.55/mc2depi/3584/6.2/.4,%
-8/5.0730067708393705/1.475/mac\_econ\_fwd500/118306/5.9/.3,%
-9/5.123400785682125/1.975/shipsec1/132862/7.9/.5,%
-10/5.433/1.3/raefsky1/271382/5.2/.1,%
-11/5.451272036830906/1.55/scircuit/282665/6.2/.3,%
-12/5.725640521811938/1.225/psmigr\_2/531668/4.9/-.4,%
-13/5.906686753316721/1.6/torso2/806653/6.4/-.1,%
-14/6.197264013258786/2.175/consph/1574940/8.7/.3
-%1/0/3.4/dense/1/13.6/.3, 1/0/3.4/rma10/1/13.6/-.1, 2/0/3.2/qcd5\_4/1/12.8/-.4, 3/2.03/3.175/cant/107/12.7/0, %
-%6/3.5543680009900878/1.55/mc2depi/3584/6.2/.4,%
-%8/5.0730067708393705/1.475/mac\_econ\_fwd500/118306/5.9/.3,%
-%9/5.123400785682125/1.975/shipsec1/132862/7.9/.5,%
-%10/5.451272036830906/1.55/scircuit/282665/6.2/.3,%
-%11/5.725640521811938/1.225/psmigr\_2/531668/4.9/-.3,%
-%12/5.906686753316721/1.6/torso2/806653/6.4/0,%
-%13/6.197264013258786/2.175/consph/1574940/8.7/.3%
-}
-	\draw (\x,\y) [fill=red]circle (3pt) node[anchor=north west,rotate=60,xshift=4pt, yshift=\a cm, fill=white, inner sep=-2pt]{};
+The PEs recieve instructions through a 1D systolic array. Each PE has 14 registers. Each PE has 8 instructions: RESET, READ\_REGISTER, WRITE\_REGISTER, WRITE\_DELTA\_CODES, WRITE\_FZIP\_CODES, WRITE\_SHARED\_MEMORY, and COMPUTE\_SPMV.
 
-%outliers
-\foreach \i/\x/\y/\m/\s/\t/\a in {%
-4/2.828015064223977/0.55/dw8192/673/2.2/.6,%
-5/3.1408221801093106/1.0/t2d\_q9/1383/4.0/-.1,%
-7/4.864689034136851/0.85/epb1/73230/3.4/-.1%
-}
-	\draw (\x,\y) [fill=yellow]circle (3pt) node[anchor=north west,rotate=60,xshift=.4, yshift=\a cm, fill=white, inner sep=-2pt]{};
+The PE themselves have 2 major components. First, the decoder block that requests the compressed matrix data and decodes it into row and column indices and floating point values. Second, the multiply-accumulator, where the actual SpMV computation takes place.
 
-
-\draw [dashed] (2.4,-.6) -- (2.4,4.8) node [midway,above, sloped, xshift=-.5cm]{$256$};
-\node at (3,-1.1) {Number of Unique Values in Matrix};
-\node at (-.8,2) [rotate=90] {Performance (Gflops)};
-\end{tikzpicture}
-\caption[Effect of value compression on SpMV performance]{Unique values in a matrix vs the performance of $R^3$. Matrices with fewer than 256 unique values (only common elements exist) enables $R^3$ format to compress much better. The \tikz \draw[fill=yellow] circle(3pt);'s are outliers due to their size (see Figure \ref{fig:nnzVgflops}).}
-\label{fig:uniqueVgflops}
-\end{figure}%
-\par Value compression is tricky but has a potential to save large amounts of space and thus memory bandwidth. Values repeat more than one would expect in matrices. Taking advantage of this repetition is the biggest step towards good compression. \figurename~\ref{fig:uniqueVgflops} shows how much of an effect this pattern has on the performance of our previous SpMV implementation, $R^3$. \par%
-\begin{figure}
-\centering
-\begin{tikzpicture}[blueRect/.style={draw,rectangle,fill=blue!30,thick,minimum width=2cm, minimum height=.7cm}, %
-redRect/.style={draw,trapezium,fill=red!30,thick,minimum width=3cm, minimum height=.7cm}, %
-data/.style={draw,trapezium,fill=blue!30,thick,trapezium left angle=70,trapezium right angle=-70,minimum height=.7cm,minimum width=1cm}]
-%\clip (-1.15cm,.45cm) rectangle (\linewidth, -6.35cm);
-\tikzstyle{line} = [draw, thick, -latex' ,shorten >=2pt];
-\node[draw,ellipse,fill=blue!30, inner ysep=0](A){\shortstack{$A$ Matrix \\ Data}};
-\node[blueRect, inner ysep=0](B)[right=of A]{Decoder};
-\node[data, inner ysep=0](C)[right=of B]{\shortstack{Column\\Data}};
-\node[blueRect, inner ysep=0](D)[below=of C]{\shortstack{$x$ Memory\\Request}};
-\node[data, inner ysep=0](E)[below=of D]{\shortstack{$x$ Vector \\Data}};
-\node[data, inner ysep=2](F)[below=of A]{\shortstack{Matrix\\Value\\Data}};
-\node[data, inner ysep=0, yshift = .2cm](G)[below=of B]{\shortstack{Row\\Data}};
-\node[blueRect, inner ysep=0, yshift = .2cm](H)[below=of G]{Multiplier};
-%\node[data](I)[below=of H]{Product};
-\node[draw,diamond,fill=blue!30, inner sep=0, yshift=.5cm](J)[below=of H]{\shortstack{Intermediator;\\To Result\\Or Adder?}};
-%\node[data](K)[below=of J]{
-\node[blueRect, yshift = -1cm](L)[above left=of J]{Adder};
-\node[draw,ellipse,fill=blue!30, inner ysep=0](M)[right=of J]{\shortstack{Result\\$y$ Vector}};
-%\node(N)[left=of L]{};
-
-\tikzstyle{every path}=[line]
-\path    (A)  --  (B);
-\path  (B) -- (C);
-\path (C) -- (D);
-\path (D) -- (E);
-\path (B) -- (F);
-\path (B) -- (G);
-\path (F) |- (H);
-\path (G) -- (H);
-\path (E.west) |- (H);
-\path (H) -- (J);
-\path (J) -| (L);
-\path (L) -| (J.north west);
-\path (J) -- (M);
-
-\end{tikzpicture}
-\caption[SpMV dataflow diagram]{Dataflow of an SpMV processing element. The processing element needs the column data before accessing the vector data.}
-\label{fig:process}
-\end{figure}%
-\begin{figure}
-\centering
-\begin{tikzpicture}[scale=1]
-\draw [dashed](-6,0) -- (4,0);
-\node at (.1,-2) {\large Memory};
-\node at (.1,-1) [draw, trapezium, trapezium right angle=70, trapezium left angle=-70,  minimum width=1.5cm, minimum height=1cm, inner xsep=-7pt](x){$x$ Vector};
-\node at (-3,-1.25) [draw,trapezium, trapezium right angle=70, trapezium left angle=-70,  minimum width=1.5cm, minimum height=1.5cm, inner xsep=-12pt](a){$A$ Matrix};
-\node at (2.5,-1) [draw, trapezium, trapezium right angle=70, trapezium left angle=-70, minimum width=0cm, minimum height=1cm, inner xsep=-7pt](y){$y$ Vector};
-
-\node at (0, 3) {\large $R^3$ Processing Element};
-\draw [dashed] (-6,1.5) -- (-3,1.5);
-\node at (-4.5, 1.5) [draw, rectangle, minimum height=2cm, minimum width=3cm](dec){};
-\node at (-5.3,1.5)[rotate=90, anchor=south,fill=white]{Decoder};
-\node at (-4.5,2) {Value};
-\node at (-4.5,1) {Index};
-\node at (-4.5, 3.5) [color=gray](vCache){Value Cache};
-\path [draw, color=gray] (vCache.north east) to (vCache.south east) to (vCache.south west) to (vCache.north west);
-\node at (1,1.5) [draw, rectangle, minimum height=2.1cm, minimum width=5cm, label={[label distance=-.5cm]90:Multiply-Accumulator}](acc){};
-\node at (acc) [draw, rectangle, xshift=1.8cm, yshift=-.2cm, minimum height=1cm](add){Adder};
-\node at (acc) [draw, rectangle, xshift=0cm, yshift=-.2cm, minimum height=1cm](int){\shortstack{Inter-\\mediator}};
-\node at (acc) [draw, rectangle, xshift=-1.8cm, yshift=-.2cm, minimum height=1cm](mult){\shortstack{Multi-\\plier}};
-
-\path [draw, thick, >=stealth',->, shorten >=2pt](a) to [] node[fill=white, inner sep=1pt, pos=.4]{\shortstack{val+\\row+col}}(dec);
-\path [draw, thick, >=stealth',->, shorten >=2pt, label={[above,sloped]{column}}](dec) to [] node[sloped, fill=white, inner sep=1pt]{col} (x);
-\path [draw, thick, >=stealth',->, shorten >=2pt](dec.20) to node[sloped, fill=white, inner sep=1pt]{val} (mult);
-\path [draw, thick, >=stealth',->, shorten >=2pt](dec.-20) to node[sloped, fill=white, inner sep=1pt]{row} (mult);
-\path [draw, thick, >=stealth',->, shorten >=2pt](mult.120) to [bend left = 30] node[sloped, fill=white, inner sep=1pt]{val+row} (int);
-
-\path [draw, thick, >=stealth',->, shorten >=2pt](x) to [] node[sloped, fill=white, inner sep=1pt]{val} (mult);
-\path [draw, thick, >=stealth',->, shorten >=2pt](int.north) to [bend left = 20] node[sloped, fill=white, inner sep=1pt]{val+val+row} (add.50);
-\path [draw, thick, >=stealth',->, shorten >=2pt](add.-50) to [bend left = 40] node[sloped, fill=white, inner sep=1pt]{val+row} (int);
-\path [draw, thick, >=stealth', ->, shorten >= 2pt](int) .. controls (1,0) and (2.1,0) .. node[sloped, fill=white, inner sep=1pt]{val}  (y);
-\path [draw, gray, thick, >=stealth', <->, shorten >=2pt] (vCache) -- (dec);
-
-\end{tikzpicture}
-\caption[Diagram of a single processing element]{A single processing element. The arrows show the flow of data through the processing element. Although this diagram shows the memory access to each of the 3 places in memory as separate, they share one memory port. The diagram also does not show the FIFOs that help keep the pipeline full.}
-\label{fig:SpMV}
-\end{figure}%
-%
-When these pillars are in place the dataflow of the design still looks similar to other implementations (\figurename \ref{fig:process}). The architecture diagram also follows the same general flow of the dataflow diagram (\figurename \ref{fig:SpMV}).
-\par We separate our contributions into 5 pieces, the next 5 chapters. Chapter~\ref{chp:mac} focuses entirely on the first pillar, the multiply accumulator design. Chapter~\ref{chp:compression} focuses on pillars 2 and 3 with discussing matrix traversal and compressing indices with delta compression. Chapter~\ref{chp:fzip} focuses on the second part of pillar 3, value compression. We found good value compression requires a large amount of on-chip memory, therefore, Chapter~\ref{chp:memory} focuses on the design of a large memory shared by multiple processing elements.
+To Parallelize the SpMV computation we split the problem into $N$ smaller SpMV computations each given to one processing element. In hardware we connect each processing element to an external memory port and a shared memory port. Chapter \ref{chp:memory} discusses the high level design in detail.
+%\par We separate our contributions into 5 pieces, the next 5 chapters. Chapter~\ref{chp:mac} focuses entirely on the first pillar, the multiply accumulator design. Chapter~\ref{chp:compression} focuses on pillars 2 and 3 with discussing matrix traversal and compressing indices with delta compression. Chapter~\ref{chp:fzip} focuses on the second part of pillar 3, value compression. We found good value compression requires a large amount of on-chip memory, therefore, Chapter~\ref{chp:memory} focuses on the design of a large memory shared by multiple processing elements.

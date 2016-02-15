@@ -558,7 +558,7 @@ In the Omega multi-port memory design, the control for this network increments e
 
          On the fifth clock cycle (\figurename~\ref{fig:reorder5}), a message arrives. However, the meaning of 1 or 0 in the 1-bit RAM switched after the pointers wrapped around the end of the RAM. Instead of 1 meaning present, 1 now means in flight. This semantic flipping allows the use of only one write port on the 1-bit RAM (instead of two if the bits flipped after popping a message), saving on memory-related resources. 
 
-\section{Evaluation Methodology}
+\section{Evaluation}
 \label{sec:evaluation}
     We limit linked list FIFOs and reorder queues to a depth of 64. We limit the depth of the FIFOs in the fully-connected interconnect network to 32 since the number of FIFOs in it grows by $O(N^2)$.
 
@@ -617,7 +617,7 @@ Segregated & Throughput & 25\% & 13\% & 6\% & 3\% \\
 
 
 
-\section{Results and Analysis}
+\section{Results}
 \label{sec:analysis}
 \begin{figure}[t]
     \center

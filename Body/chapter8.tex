@@ -1,5 +1,41 @@
-\chapter{RESULTS}
-\label{chp:results}
+\chapter{High Level Design}
+\label{chp:high_level_design}
+\section{Related Work}
+\section{Processor Design}
+\section{File format}
+\section{Memory Latency}
+\begin{figure}
+\begin{tikzpicture}[xscale=2,yscale=2]
+\node(req) at (0,0) [draw]{\shortstack{Request\\Arbitration}};
+\node(tracker) at (2,-1) [draw, minimum width=9cm, minimum height=1cm]{in-flight-tracker};
+\node(f1) at (1, -2) [draw,rotate=90]{FIFO 1};
+\node(f2) at (2, -2) [draw,rotate=90]{FIFO 2};
+\node(f3) at (3, -2) [draw,rotate=90]{FIFO 3};
+\node(f4) at (4, -2) [draw,rotate=90]{FIFO 4};
+\draw[dashed] (-.5,-3) -- (4.5,-3);
+\draw (0,-3.7) -- (4,-3.7) -- (4,-3.9) -- (0,-3.9) -- cycle;
+\draw (1,-3.7) -- (1,-3.9);
+\draw (2,-3.7) -- (2,-3.9);
+\draw (3,-3.7) -- (3,-3.9);
+
+\draw [->,shorten >=2pt] (req) -- (tracker.north -| req);
+\draw [->,shorten >=2pt] (tracker.south -| req) -- (0,-3 -| req);
+\draw [->,shorten >=2pt] (f1.west) .. controls +(0,-.3) and +(0,.3) .. (2,-3) .. controls +(0,-.3) and +(0,.3) .. (.5,-3.7);
+
+\end{tikzpicture}
+\caption{Memory Request Arbitration}
+\label{fig:memory_latency}
+\end{figure}
+Dealing with memory latency is not trivial. The difficulty lies in the fact we are reading 4 streams at different rates. Our platform has a 700 clock cycle external memory latency. We created a general approach with one tweak to achieve high throughput under these conditions.
+
+The hardware consists of 3 parts. First, 4 FIFOs buffer the memory responses of the 4 different streams. Second, an `in-flight-tracker' keeps track of the number of requests to ensure the FIFOs never overflow or have to stall the memory. Third, the request logic determines which (if any) stream should be read from on the current clock cycle.
+
+We use a round robin for request arbitration. We use 3 different signals to determine when to move to the next stream: the tracker information, FIFO saturation and time. First, if the tracker indicates that the limit of in-flight requests has been reached the request arbiter switches to the next stream. Second, if the FIFO corresponding to the to the current stream is half full (indicating that the stream does not need to be read from so often) then the request arbiter switches to the next stream. Third, a timer insures each well get at most 32 requests before the request arbiter switches to the next stream.
+
+\par In practice this still does not achieve good throughput when computing memory bound (difficult to compress) matrices. The problem is that the fzip argument stream (the non-encoded bits or common value index stream) ends up starving and slows down the decoder. To solve this we give priority to this stream by only moving from it when the tracker indicates no more in flight messages can be accepted. This means the timer and the FIFO saturation will not cause the request arbiter to stop reading this stream.
+%TODO: explain why
+\section{System Design}
+\section{Results}
 $R^3$, our previous work, achieved up to 13.6 GFLOPS and an average performance of 6 GFLOPS on the non-pattern matrices used by \cite{prelim:bell}. We were able to nearly double this performance to an average of 11 GFLOPS.
 
 \begin{figure*}
