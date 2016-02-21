@@ -1,7 +1,74 @@
-\chapter{High Level Design}
+\chapter{HIGH LEVEL DESIGN}
 \label{chp:high_level_design}
-\section{Related Work}
+This chapter is about creating an implementation using the subcomponents mentioned in the previous chapter. First, we will look at previous designs to guide our decisions on designing the processing element and the system as a whole. Second, we will look at the system design (everything higher than a single processing element. Second, we will look at the file format. Second, we will look at our processing element design. Third, we will look at how to deal with memory latency.
+\section{System Design}
+Because each processing element acts indepedently during the SpMV computation it is fairly easy to come up with a high level organization. Systolic arrays work well on FPGAs \cite{prelim:johnson}. So we will use a simple 1-D systolic array for communication (See figure~\ref{fig:systolic_array}). The high amount of computation to instructions means the $O(p)$ time to send insturctions is negligable. In addition, each PE connects to the shared memory and external memory. This platform has 16 virtual ports (8, 300Mhz ports multiplexed into 16 150Mhz virtual ports).
+\begin{figure}
+    \centering
+    \begin{tikzpicture}
+        \node (pe) at (0,0) [draw,minimum width=2cm,minimum height=2cm]{PE$_{i}$};
+        \node(left) at (-3,0) [minimum width=1cm,minimum height=2cm]{PE$_{i-1}$};
+        \draw (left.north west) -- (left.north east) -- (left.south east) -- (left.south west);
+        \node(right) at (3,0) [minimum width=1cm,minimum height=2cm]{PE$_{i+1}$};
+        \draw (right.north east) -- (right.north west) -- (right.south west) -- (right.south east);
+        \node at (0, 2) {Shared Memory};
+        \node at (0, -2) {External Memory};
+        \draw (-3,1.5) -- (3,1.5);
+        \draw [dashed] (-3,-1.5) -- (3,-1.5);
+
+        \draw [->,shorten >=2pt](left.east |- 0,.4) -- (pe.west |- 0,.4) node [midway,above]{busy};
+        \draw [->,shorten >=2pt](left.east |- 0,-.4) -- (pe.west |- 0,-.4) node [midway,above]{inst};
+
+        \draw [->,shorten >=2pt](pe.east |- 0,.4) -- (right.west |- 0,.4) node [midway,above]{busy};
+        \draw [->,shorten >=2pt](pe.east |- 0,-.4) -- (right.west |- 0,-.4) node [midway,above]{inst};
+
+        \draw [->,shorten >=2pt](pe.north -| -.4,0) -- (0,1.5 -| -.4,0);
+        \draw [->,shorten >=2pt](0,1.5 -| .4,0) -- (pe.north -| .4,0);
+
+        \draw [->,shorten >=2pt](0,-1.5 -| -.4,0) -- (pe.south -| -.4,0);
+        \draw [->,shorten >=2pt](pe.south -| .4,0) -- (0,-1.5 -| .4,0);
+
+    \end{tikzpicture}
+    \caption[1-D Systolic array structure of processing elements]{The processing element are arranged in a simple 1-D systolic array.}
+    \label{fig:systolic_array}
+\end{figure}
 \section{Processor Design}
+One way to describe our processing element is that it is a very small instruction set processor for SpMV. However, the instructions are mostly for organization of the hardware not execution like in other work [\cite{prelim:good}]. The instructions are 64 bits wide and consist of 4 parts: a 4-bit opcode, a 5-bit PE ID, a 4-bit first argument, and a 51-bit second argument. The opcodes described in table~\ref{tbl:opcodes}.
+
+%\newcolumntype{L}{>{\ce
+
+\begin{table}
+    \centering
+    \begin{tabular}{|m{1cm}|c|m{2cm}|c|m{5cm}|}
+        \hline
+        opcode & name & arg1 & arg2 & description \\
+        \hline
+        0000 & NOP & N/A & N/A & This is the default signal sent to the PEs. \\
+        \hline
+        0001 & RESET & N/A & N/A & This reset eliminates the need for a seperate reset signal to be routed to all the PEs.\\
+        \hline
+        0010 & WRITE & register address & data & This loads data into the specified register.\\
+        \hline
+        0011 & LOAD\_DELTA\_CODES & N/A & N/A & This loads the delta codes into the cooresponding lookup table in the decoder.\\
+        \hline
+        0100 & LOAD\_PREFIX\_CODES & N/A & N/A & This loads the prefix codes into the cooresponding lookup table in the decoder.\\
+        \hline
+        0101 & LOAD\_COMMON\_VALUES & N/A & N/A & This loads the 8,192 most common values into the shared memory.\\
+        \hline
+        0110 & EXECUTE\_SPMV & N/A & N/A & This instructs the PE(s) to perform the SpMV operation.\\
+        \hline
+        0111 & READ & register address & N/A & This instructs the PE to return the data on the specified register.\\
+        \hline
+        1000 & RETURN & register address & data & This is sent from the PE after the READ instruction is recieved.\\
+        \hline
+        1001-1111 & RESERVED & N/A & N/A & N/A \\
+        \hline
+%
+
+    \end{tabular}
+    \caption{The opcodes for the SpMV processor}
+    \label{tbl:opcodes}
+\end{table}
 \section{File format}
 \section{Memory Latency}
 \begin{figure}
@@ -20,7 +87,20 @@
 
 \draw [->,shorten >=2pt] (req) -- (tracker.north -| req);
 \draw [->,shorten >=2pt] (tracker.south -| req) -- (0,-3 -| req);
-\draw [->,shorten >=2pt] (f1.west) .. controls +(0,-.3) and +(0,.3) .. (2,-3) .. controls +(0,-.3) and +(0,.3) .. (.5,-3.7);
+\draw [<-,shorten <=2pt] (f1.west) .. controls +(0,-.3) and +(0,.3) .. (2,-3) .. controls +(0,-.3) and +(0,.3) .. (.5,-3.7);
+\draw [<-,shorten <=2pt] (f2.west) .. controls +(0,-.3) and +(0,.3) .. (2.3,-3) .. controls +(0,-.3) and +(0,.3) .. (1.5,-3.7);
+\draw [<-,shorten <=2pt] (f3.west) .. controls +(0,-.3) and +(0,.3) .. (2.6,-3) .. controls +(0,-.3) and +(0,.3) .. (2.5,-3.7);
+\draw [<-,shorten <=2pt] (f4.west) .. controls +(0,-.3) and +(0,.3) .. (2.9,-3) .. controls +(0,-.3) and +(0,.3) .. (3.5,-3.7);
+
+\draw [->,shorten >=2pt] (f1) -- (tracker.south -| f1);
+\draw [->,shorten >=2pt] (f2) -- (tracker.south -| f2);
+\draw [->,shorten >=2pt] (f3) -- (tracker.south -| f3);
+\draw [->,shorten >=2pt] (f4) -- (tracker.south -| f4);
+
+\draw [->] (tracker.north -| f1) -- +(0,.5);
+\draw [->] (tracker.north -| f2) -- +(0,.5);
+\draw [->] (tracker.north -| f3) -- +(0,.5);
+\draw [->] (tracker.north -| f4) -- +(0,.5);
 
 \end{tikzpicture}
 \caption{Memory Request Arbitration}
@@ -34,7 +114,6 @@ We use a round robin for request arbitration. We use 3 different signals to dete
 
 \par In practice this still does not achieve good throughput when computing memory bound (difficult to compress) matrices. The problem is that the fzip argument stream (the non-encoded bits or common value index stream) ends up starving and slows down the decoder. To solve this we give priority to this stream by only moving from it when the tracker indicates no more in flight messages can be accepted. This means the timer and the FIFO saturation will not cause the request arbiter to stop reading this stream.
 %TODO: explain why
-\section{System Design}
 \section{Results}
 $R^3$, our previous work, achieved up to 13.6 GFLOPS and an average performance of 6 GFLOPS on the non-pattern matrices used by \cite{prelim:bell}. We were able to nearly double this performance to an average of 11 GFLOPS.
 

@@ -243,9 +243,13 @@ You may notice that this computation does the additions out of order. For an exa
     \caption{Log Sum Accumulator}
 \end{figure}
 
-%\subsection{Single Adder Accumulator}
+\subsection{Single Adder Accumulator}
+A multiply-accumulator with one multiplier should only need one adder to do all the accumulation. You may have noticed that the adders get progressively underutilized in the log-sum accumulator. The difficulty is how to create an algorithm to achieve this. It is clear that buffering has to occur to achieve this. If the output needs to be in order than the buffering needs to be at least $O(a\textrm{log}(a))$ to accomadate the case where one row has several valuse and fills the adder pipeline and the following rows have only 1 value. If the output can be out of order (meaning the output of the short rows that get accumulated quickly can go to the output before the long rows before it) than it seems like $O(a)$ is the lower limit of the required buffering.
 
-%\subsection{Reducing the Pipeline}
+Other work has achieved accumulators with $O(1)$ adders. \cite{prelim:zhuo} came up with 2 accumulators that use 2 adders and 1 that uses a single adder. However, the single adder solution had restrictions. In addition to only allowing row-major traversal it had a maximum row length of $a$ (the depth of the adder pipeline). This design also required $O(a^2)$ buffer space. The accumulator has two buffers. While one buffer is having it's values accumulated the other is recieving new values. The adder takes in two values from the buffer in the accumulation state and then jumps $a$ addresses to add two other values that belong to a different row. Let's look at an example.
+
+\subsection{Reducing the Pipeline}
+One possible solution to the row limitation in the SSA accumulator would be to stall the values coming in so that the adder can accumulate the longer rows together. This brings up the other solution to this problem create a floating point accumulator with a single clock cycle critical path. Flopoco provides one of these cores [\cite{prelim:deDinechin3}], however only values belonging to the same row can be in the pipeline. This means the throughput of this accumulator would be caped at $\frac{nnz}{M*a + nnz}$.
 
 %TODO: single cycle accumulator: A 6.2-GFlops Floating-Point Multiply-Accumulator
 %With Conditional Normalization, FPGA Implementation of a Single-Precision Floating-Point Multiply-
