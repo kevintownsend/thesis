@@ -246,14 +246,84 @@ You may notice that this computation does the additions out of order. For an exa
 \subsection{Single Adder Accumulator}
 A multiply-accumulator with one multiplier should only need one adder to do all the accumulation. You may have noticed that the adders get progressively underutilized in the log-sum accumulator. The difficulty is how to create an algorithm to achieve this. It is clear that buffering has to occur to achieve this. If the output needs to be in order than the buffering needs to be at least $O(a\textrm{log}(a))$ to accomadate the case where one row has several valuse and fills the adder pipeline and the following rows have only 1 value. If the output can be out of order (meaning the output of the short rows that get accumulated quickly can go to the output before the long rows before it) than it seems like $O(a)$ is the lower limit of the required buffering.
 
-Other work has achieved accumulators with $O(1)$ adders. \cite{prelim:zhuo} came up with 2 accumulators that use 2 adders and 1 that uses a single adder. However, the single adder solution had restrictions. In addition to only allowing row-major traversal it had a maximum row length of $a$ (the depth of the adder pipeline). This design also required $O(a^2)$ buffer space. The accumulator has two buffers. While one buffer is having it's values accumulated the other is recieving new values. The adder takes in two values from the buffer in the accumulation state and then jumps $a$ addresses to add two other values that belong to a different row. Let's look at an example.
+Other work has achieved accumulators with $O(1)$ adders. \cite{prelim:zhuo} came up with 2 accumulators that use 2 adders and 1 that uses a single adder. However, the single adder solution had restrictions. In addition to only allowing row-major traversal it had a maximum row length of $a$ (the depth of the adder pipeline). This design also required $O(a^2)$ buffer space. The accumulator has two buffers. While one buffer is having it's values accumulated the other is recieving new values. The adder takes in two values from the buffer in the accumulation state and then jumps $a$ addresses to add two other values that belong to a different row. Table~\ref{tbl:single_adder} shows the schedualing of accumulating the products from the example in Equation~\ref{eqn:example}. For simplification we set $\alpha = 4$ instead of $\alpha = 14$.
 
-\subsection{Reducing the Pipeline}
-One possible solution to the row limitation in the SSA accumulator would be to stall the values coming in so that the adder can accumulate the longer rows together. This brings up the other solution to this problem create a floating point accumulator with a single clock cycle critical path. Flopoco provides one of these cores [\cite{prelim:deDinechin3}], however only values belonging to the same row can be in the pipeline. This means the throughput of this accumulator would be caped at $\frac{nnz}{M*a + nnz}$.
+Some may notice a hazard occurs if two value in the fourth column of the buffer belong to the same row of the matrix. This is what prevents this accumulator from being able to accumulate rows greater than $\alpha$. To accomadate this case the accumulator could have an additional adder or stall the accumulator to allow time for accumulating the long rows.
 
-%TODO: single cycle accumulator: A 6.2-GFlops Floating-Point Multiply-Accumulator
-%With Conditional Normalization, FPGA Implementation of a Single-Precision Floating-Point Multiply-
-%Accumulator with Single-Cycle Accumulation
+\begin{sidewaystable}
+    \centering
+    \caption{A single adder accumulator}
+    \label{tbl:single_adder}
+    \begin{tabular}{|c||c|c|c|c||c||c|c|c|c|}
+        \hline
+        Cycle & \multicolumn{4}{c||}{First buffer} & Adder & \multicolumn{4}{c|}{Second buffer} \\
+        \hline
+        \hline
+        \multirow{4}{*}{1-4} & $A_{11}x_1$ & $A_{14}x_4$ & $A_{17}x_7$ & $A_{25}x_5$ & & & & & \\
+        \cline{2-10}
+        & $A_{28}x_8$ & $A_{32}x_2$ & $A_{33}x_3$ & $A_{36}x_6$ & & & & & \\
+        \cline{2-10}
+        & $A_{37}x_7$ & $A_{41}x_1$ & $A_{45}x_5$ & $A_{53}x_3$ & & & & & \\
+        \cline{2-10}
+        & $A_{54}x_4$ & $A_{57}x_7$ & $A_{58}x_8$ & $A_{62}x_2$ & & & & & \\
+        \hline
+        \hline
+        \multirow{4}{*}{5-8} & & & $A_{17}x_7$ & $A_{25}x_5$ & $A_{11}x_1 + A_{14}x_4$ & $A_{65}x_5$ & $A_{72}x_2$ & $A_{73}x_3$ & $A_{76}x_6$ \\
+        \cline{2-10}
+        & $A_{28}x_8$ & $A_{32}x_2$ & $A_{33}x_3$ & $A_{36}x_6$ & & & & & \\
+        \cline{2-10}
+        & $A_{37}x_7$ & $A_{41}x_1$ & $A_{45}x_5$ & $A_{53}x_3$ & & & & & \\
+        \cline{2-10}
+        & & & $A_{58}x_8$ & $A_{62}x_2$ & $A_{54}x_4 + A_{57}x_7$ & & & & \\
+        \hline
+        \hline
+        \multirow{4}{*}{9-12} & & & & $A_{25}x_5$ & $\left(A_{11}x_1 + A_{14}x_4\right) + A_{17}x_7$ & $A_{65}x_5$ & $A_{72}x_2$ & $A_{73}x_3$ & $A_{76}x_6$ \\
+        \cline{2-10}
+        & $A_{28}x_8$ & & & $A_{36}x_6$ & $A_{32}x_2 + A_{33}x_3$ & $A_{78}x_8$ & $A_{83}x_3$ & $A_{84}x_4$ & $A_{85}x_5$\\
+        \cline{2-10}
+        & $A_{37}x_7$ & & & $A_{53}x_3$ & $A_{41}x_1 + A_{45}x_5$ & & & & \\
+        \cline{2-10}
+        & & & & $A_{62}x_2$ & $\left(A_{54}x_4 + A_{57}x_7\right) + A_{58}x_8$ & & & & \\
+        \hline
+        \hline
+        \multirow{4}{*}{13-16} & & & & $A_{25}x_5$ & & $A_{65}x_5$ & $A_{72}x_2$ & $A_{73}x_3$ & $A_{76}x_6$ \\
+        \cline{2-10}
+        & $A_{28}x_8$ & & & & $\left(A_{32}x_2 + A_{33}x_3\right) + A_{36}x_6$ & $A_{78}x_8$ & $A_{83}x_3$ & $A_{84}x_4$ & $A_{85}x_5$\\
+        \cline{2-10}
+        & $A_{37}x_7$ & & & $A_{53}x_3$ & & $A_{86}x_6$ & & & \\
+        \cline{2-10}
+        & $A_{54}x_4 + A_{57}x_7 + A_{58}x_8$ & & & & $A_{62}x_2$ & & & & \\
+        \hline
+        \hline
+        \multirow{4}{*}{17-20} & & & & & & $A_{65}x_5$ & $A_{72}x_2$ & $A_{73}x_3$ & $A_{76}x_6$ \\
+        \cline{2-10}
+        & & & & & $A_{25}x_5 + A_{28}x_8$ & $A_{78}x_8$ & $A_{83}x_3$ & $A_{84}x_4$ & $A_{85}x_5$\\
+        \cline{2-10}
+        & & & & & $\left(A_{32}x_2 + A_{33}x_3 + A_{36}x_6\right) + A_{37}x_7$ & $A_{86}x_6$ & & & \\
+        \cline{2-10}
+        & & & & & $A_{53}x_3 + \left(A_{54}x_4 + A_{57}x_7 + A_{58}x_8\right)$ & & & & \\
+        \hline
+
+
+    \end{tabular}
+\end{sidewaystable}
+
+\subsection{Using a single cycle Accumulation loop}
+Another solution to this problem is to accumulate in one clock cycle. This is the approach in [\cite{prelim:bachir}]. The idea is to split the accumulation into 3 phases: The extend mantissa and reduce exponent phase, the accumulation loop phase, and the normalize phase. In the first phase the floating point format is converted into a 5-bit exponent and a 52+64=116-bit 2s complement mantissa. In the second phase the incomming value is added to the stored value. In the third phase, the stored value is converted back into IEEE-754 format.
+
+The accumulation phase is more complex than a simple 2s complement adder, because there is an exponent. The difference in the exponents determines what operation the accumulator does. If the incoming exponent $e_i$ is more than 2 greater than the stored exponent $e_s$ than the stored value is thrown out because it is too small and the incomming value replaces the stored value. The other cases are in Table~\ref{tbl:accumulator_ops}.
+
+\begin{table}
+    \caption{Based on the difference of the incomming exponent $e_i$ and the stored exponent $e_s$ the accumulator does a different operation to add the two values together}
+    \label{tbl:accumulator_ops}
+    \begin{tabular}{|c|c|}
+        \hline
+        $e_s - e_i$ & $e_i\Leftarrow$ \\
+        \hline
+    \end{tabular}
+\end{table}
+
+As you may guess this is still a lot of logic for one clock cycle and as a result this limit the maximum frequency.
 
 \section{Multiply-accumulator with an Intermediator}
 \label{sec:intermediator}

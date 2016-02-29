@@ -46,9 +46,9 @@ In its simplest form sparse matrix vector multiplication is the operation $y=Ax$
 \end{IEEEeqnarraybox*}\right]
 \label{eqn:example}
 \end{equation}
-\par Sparse matrices differ from dense matrices in that they contain mostly (usually more than 99\%) zeros. For example, consider the matrix representation of the Facebook friends graph. Each row contains non-zero values representing friend connections and zero values representing non-friends, or people you do not know. Being friends with .1\% of Facebook users would require being friends with 1 million people, an impressive feat. In other words, from the time you started reading this paper 100 people have joined Facebook and are not friends with you. The average user has 300 friends. For this reason, sparsity of matrices is usually measured in elements per row rather than a percent. The percent sparsity of the matrix keeps growing but the number of non-zero elements per row stays roughly constant.
+\par Sparse matrices differ from dense matrices in that they contain mostly (usually more than 99\%) zeros. For example, consider the matrix representation of the Facebook friends graph [\cite{prelim:zuckerburg}]. Each row contains non-zero values representing friend connections and zero values representing non-friends, or people you do not know. Being friends with .1\% of Facebook users would require being friends with 1 million people, an impressive feat. In other words, from the time you started reading this paper 100 people have joined Facebook and are not friends with you. The average user has 300 friends. For this reason, sparsity of matrices is usually measured in elements per row rather than a percent. The percent sparsity of the matrix keeps growing but the number of non-zero elements per row stays roughly constant.
 \section{Coordinate Format (COO)}
-\par Dense matrices can be stored as an array of values. However, if sparse matrices were stored this way they would require orders of magnitude more space than a simple alternative. The alternative, coordinate format (COO), stores 3 arrays: a row index array, a column index array, and a value array. By convention indices are 4 bytes (32-bit) integers. Values are either single-precision (32-bit) or double-precision (64-bit) floating point values. For simplicity, this paper only concerns itself with double precision values. Using the example matrix, the COO format would be:\\
+\par Dense matrices can be stored as an array of values. However, if sparse matrices were stored this way they would require orders of magnitude more space than a simple alternative. The alternative, coordinate format (COO), stores 3 arrays: a row index array, a column index array, and a value array. By convention, row and column indices are 4 byte (32-bit) integers. Values are either single-precision (32-bit) or double-precision (64-bit) floating point values. For simplicity, this paper only concerns itself with double precision values. Using the example matrix, the COO format would be:\\
 ROW:    0, 0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 4, 4, 4, 4, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7 \\ 
 COLUMN: 0, 3, 6, 4, 7, 1, 2, 5, 6, 0, 4, 2, 3, 6, 7, 1, 4, 1, 2, 5, 7, 2, 3, 4, 5\\ 
 VALUE: $A_{11}$, $A_{14}$, $A_{17}$, $A_{25}$, $A_{28}$, $A_{32}$, $A_{33}$, $A_{36}$, $A_{37}$, $A_{41}$, $A_{45}$, $A_{53}$, $A_{54}$, $A_{57}$, $A_{58}$, $A_{62}$, $A_{65}$, $A_{72}$, $A_{73}$, $A_{76}$, $A_{78}$, $A_{83}$, $A_{84}$, $A_{85}$, $A_{86}$ \par
@@ -166,12 +166,12 @@ Before discussing storage formats specific to GPUs, it is important to understan
     \textrm{\shortstack{Column\\Indices}}
     =
     \left[\begin{IEEEeqnarraybox*}[][c]{,c/c/c/c,}
-            0 & 3 & 6 & \backslash 0 \\
-            4 & 7 & \backslash 0 & \backslash 0 \\
+            0 & 3 & 6 & \times \\
+            4 & 7 & \times & \times \\
             1 & 2 & 5 & 6 \\
-            0 & 4 & \backslash 0 & \backslash 0 \\
+            0 & 4 & \times & \times \\
             2 & 3 & 6 & 7 \\
-            1 & 4 & \backslash 0 & \backslash 0 \\
+            1 & 4 & \times & \times \\
             1 & 2 & 5 & 7 \\
             2 & 3 & 4 & 5
     \end{IEEEeqnarraybox*}\right]

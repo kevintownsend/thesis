@@ -33,12 +33,10 @@ Because each processing element acts indepedently during the SpMV computation it
     \label{fig:systolic_array}
 \end{figure}
 \section{Processor Design}
-One way to describe our processing element is that it is a very small instruction set processor for SpMV. However, the instructions are mostly for organization of the hardware not execution like in other work [\cite{prelim:good}]. The instructions are 64 bits wide and consist of 4 parts: a 4-bit opcode, a 5-bit PE ID, a 4-bit first argument, and a 51-bit second argument. The opcodes described in table~\ref{tbl:opcodes}.
-
-%\newcolumntype{L}{>{\ce
-
 \begin{table}
     \centering
+    \caption{The opcodes for the SpMV processor}
+    \label{tbl:opcodes}
     \begin{tabular}{|m{1cm}|c|m{2cm}|c|m{5cm}|}
         \hline
         opcode & name & arg1 & arg2 & description \\
@@ -66,10 +64,109 @@ One way to describe our processing element is that it is a very small instructio
 %
 
     \end{tabular}
-    \caption{The opcodes for the SpMV processor}
-    \label{tbl:opcodes}
 \end{table}
+One way to describe our processing element is that it is a very small instruction set processor for SpMV. However, the instructions are mostly for organization of the hardware not execution like in other work [\cite{prelim:good}]. The instructions are 64 bits wide and consist of 4 parts: a 4-bit opcode, a 5-bit PE ID, a 4-bit first argument, and a 51-bit second argument. The opcodes described in Table~\ref{tbl:opcodes}.
+
+\begin{table}
+    \centering
+    \caption{The registers in each SpMV processing element}
+    \label{tbl:registers}
+    \begin{tabular}{|c|c|m{8cm}|}
+        \hline
+        Register & Name & Description\\
+        \hline
+        0 & $y$ vector address & The address to store the next $y$ value. \\
+        \hline
+        1 & ending $y$ vector address & The one over last address of the last $y$ value.\\
+        \hline
+        2 & $x$ vector address & The static address of the $x$ vector.\\
+        \hline
+        3 & nnz MAC count down & Starts at nnz - 1 and decreases by one for each value that enter the MAC.\\
+        \hline
+        4 & index opcodes address & The address of the next 8 byte chunk to request from the index opcodes stream. In the LOAD\_DELTA\_CODES, LOAD\_PREFIX\_CODES, and LOAD\_COMMON\_CODES operations this register stores the address of the next 8-byte chuck to read in.\\
+        \hline
+        5 & index argument address & The address of the next 8 byte chunk to request from the index argument stream. In the LOAD\_DELTA\_CODES, LOAD\_PREFIX\_CODES, and LOAD\_COMMON\_CODES operations this register stores the address of where the next element is stored in on-chip memory.\\
+        \hline
+        6 & fzip opcodes address & The address of the next 8 byte chunk to request from the fzip opcodes stream.\\
+        \hline
+        7 & fzip argument address & The address of the next 8 byte chunk to request from the fzip argument streams.\\
+        \hline
+        8 & ending index opcodes address & The one over last address of the space allocated to the index opcodes stream. In the LOAD\_DELTA\_CODES, LOAD\_PREFIX\_CODES, and LOAD\_COMMON\_CODES operations this register stores the one over last address of the data being read in.\\
+        \hline
+        9 & ending index argument address & The one over last address of the space allocated to the index arguments stream. In the LOAD\_DELTA\_CODES, LOAD\_PREFIX\_CODES, and LOAD\_COMMON\_CODES operations this register stores the one over last address of the on-chip memory.\\
+        \hline
+        10 & ending fzip opcodes address & The one over last address of the space allocated to the fzip opcodes stream.\\
+        \hline
+        11 & ending fzip arguments address & The one over last address of the space allocated to the fzip arguments stream.\\
+        \hline
+        12 & nnz index count down & Starts at nnz - 1 and decreases by one for each index pair that exits the decoder.\\
+        \hline
+        13 & nnz fzip count down & Starts at nnz - 1 and decreases by one for each floating point value that exits the decoder.\\
+        \hline
+        14-15 & reservered & Used for debugging.\\
+        \hline
+    \end{tabular}
+
+\end{table}
+
+There are 14, 48-bit registers on each processing element. The function of each register is described in Table~\ref{tbl:registers}. All of these registers serve a purpose during the main stage (SPMV\_EXECUTE). Registers 4, 5, 8 and 9 also have a function in the other stages (LOAD\_DELTA\_CODES, LOAD\_PREFIX\_CODES, LOAD\_PREFIX\_CODES, and LOAD\_COMMON\_VALUES).
+
+The debug registers give a better understanding of the operation of the processing element during the SpMV operation.
+
 \section{File format}
+We looked at previous file formats like gzip [\cite{prelim:deutsch}] to help create a new file format. We start with a 256-byte header. This header has reserved values for future versions, pointers to the sections of the file, and other values about the matrix or compression streams. each value in the header is 8-bytes. The specification of each value is described in Table~\ref{tbl:header}.
+
+\begin{table}
+    \centering
+    \caption{The header for our sparse matrix compression file format (SMAC)}
+    \label{tbl:header}
+    \begin{tabular}{|ccm{6cm}|}
+        \hline
+        Number & Field & Description\\
+        \hline
+        0 & RESERVED & \\
+        \hline
+        1 & width & The width of the matrix.\\
+        \hline
+        2 & height & The height of the matrix.\\
+        \hline
+        3 & nnz & Number of non-zero values in the matrix.\\
+        \hline
+        4 & spmCodeSTreamBitLength & Number of bits in the sparse pattern code stream.\\
+        \hline
+        5 & spmArgumentStreamBitLength & Number of bit in the sparse pattern argument stream.\\
+        \hline
+        6 & fzipCodeStreamBitLength & Number of bits in the fzip (floating point) code stream.\\
+        \hline
+        7 & fzipArgumentStreamBitLength & Number of bits in the fzip (floating point) argument stream.\\
+        \hline
+        8-15 & RESERVED & \\
+        \hline
+        16 & spmCodesPtr & Offset from the start of the file to the start of the delta codes (will always be 256).\\
+        \hline
+        17 & fzipCodesPtr & offset from the start of the file to the start of the fzip codes (will always be 4352).\\
+        \hline
+        18 & commonDoublesPtr & Offset from the start of the file to the start of the 8,192 common floating point values (will always be 12544).\\
+        \hline
+        19 & spmCodeStreamPtr & Offset from the start of the file to the start of the sparse pattern matrix code stream.\\
+        \hline
+        20 & spmArgumentStreamPtr & Offset from the start of the file to the start of the sparse pattern matrix argument stream.\\
+        \hline
+        21 & fzipCodeStreamPtr & Offset from the start of the file to the start of the fzip code stream.\\
+        \hline
+        22 & fzipArgumentStream Ptr & Offset from the start of the file to the start of the fzip argument stream.\\
+        \hline
+        23 & size & The total number of bytes in the file. \\
+        \hline
+        24-31 & RESERVED & \\
+        \hline
+    \end{tabular}
+\end{table}
+
+Three constant length sections after the header. First, the codes for the sparse pattern matrix compression. Second, the codes for the fzip compression. Third, the common floating point values (also for fzip comression). These sections will take a small fraction of the total file space for large matrices. For this reason we choose not to try to compress these sections further and just leave them as simple as possible.
+
+Four data streams follow after all the decoding information, the code and argument stream for the indices and the code and argument streams for the floating point values. These streams have a varible bit length but there exists extra buffer bits to get to a 8 byte boundry. To make the design of the decoders easier there is at least 8 bytes of buffer space. For the fzip argument stream, there is at least 48 bytes of buffer space to increase throughput of decoding floating point values.
+
 \section{Memory Latency}
 \begin{figure}
 \begin{tikzpicture}[xscale=2,yscale=2]
