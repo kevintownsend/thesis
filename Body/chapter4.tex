@@ -27,12 +27,12 @@ Most designs, including ours, use existing double-precision adder and multiplier
 \end{table}
 
 \subsection{Strided Accumulator}
-One way to accumulate values with an adder that has a latency of $\alpha$ clock cycles is to accumulate $\alpha$ values at a time. This requires values to come in a strided manner. For example, once a value from row 0 enters the adder than $\alpha - 1$ more values from different rows enter the adder before proceeding to the next value in row 0. The traversal in \cite{prelim:fowers}, disscussed in the previous chapter in Section~\ref{sec:traversal_related_work}, follows this rule and makes designing this accumulator fairly straight forward.
+One way to accumulate values with an adder that has a latency of $\alpha$ clock cycles is to accumulate $\alpha$ values at a time. This requires values to come in a strided manner. For example, once a value from row 0 enters the adder than $\alpha - 1$ more values from different rows enter the adder before proceeding to the next value in row 0. The traversal in \cite{prelim:fowers}, discussed in the previous chapter in Section~\ref{sec:traversal_related_work}, follows this rule and makes designing this accumulator fairly straight forward.
 
 \subsection{Binary Tree Accumulator}
 Generally one multiplier multiplicand pair is sent per clock cycle to a multiply-accumulator, however one design streams multiple values at a time [\cite{prelim:sun2}]. Effectively, this MAC can be used to create a large processing element rather than many smaller ones. The basic design is shown in \figurename~\ref{fig:tree_accumulator}. From a high level you can see this hardware computes dot-products. However, because the dot-products are of variable length the design is more complex.
 
-\par This binary tree accumulator design uses an IPV (Input Pattern Vector) or a eol bitmap to keep track of the rows. A `1' indicates the element is the last element in the row and a `0' otherwise. Our example MAC accepts 4 pairs of values per clock cycle. To explain this MAC let us use the example matrix from Equaiton~\ref{eqn:example}. The inputs in this case would be as follows:
+\par This binary tree accumulator design uses an IPV (Input Pattern Vector) or a eol bitmap to keep track of the rows. A `1' indicates the element is the last element in the row and a `0' otherwise. Our example MAC accepts 4 pairs of values per clock cycle. To explain this MAC let us use the example matrix from Equation~\ref{eqn:example}. The inputs in this case would be as follows:
 \begin{enumerate}
     \item IPV=0010, data=($A_{11}\times x_1, A_{14}\times x_4, A_{17}\times x_7, A_{25}\times x_5$)
     \item IPV=1000, data=($A_{28}\times x_8, A_{32}\times x_2, A_{33}\times x_3, A_{36}\times x_6$)
@@ -205,14 +205,14 @@ The IPV controls 3 things: the routing in the switch networks, how the accumulat
 
 You may notice that this computation does the additions out of order. For an example of out of order addition, when computing $1+2+3+4$ the MAC does $(1+2)+(3+4)$. This removes the data dependency of adding $1$ and $2$ before processing $3$. CPUs and GPUs (in general) compute floating point addition in order (eg. $\left((1+2)+3\right)+4$). This means results may differ slightly, because changing the order of floating point addition can change the result [\cite{prelim:goldberg}].
 
-The accumulator has 2 inputs. The right input is for the sum the repesents the first row of the current set that may be a coninuation of the last row in the previous set. The left input is for storing the part of the dot product that continues onto the next input set. In the case that no row end in the current set (IPV=0000) then the value goes into the right input of the accumulator.
+The accumulator has 2 inputs. The right input is for the sum the represents the first row of the current set that may be a continuation of the last row in the previous set. The left input is for storing the part of the dot product that continues onto the next input set. In the case that no row end in the current set (IPV=0000) then the value goes into the right input of the accumulator.
 
 \subsection{The Log Sum Accumulator}
 One accumulator that would work for this design is a log sum accumulator [\cite{prelim:sun1}]. To allow this accumulator to be used in the previous accumulator, we have two inputs into this accumulator.
 
-This design is one of the simpliest accumulators. First, one floating point adder loops back on itself to accumulating new values with the adders output. Second, once the last value arrives the 14 or fewer values in the adder are sent through a series of adders. Each adder in the series reduces the number of values in the set by half. So 4 adders will can reduce up to 16 values, which is more than the 14 possible, down to 1 value.
+This design is one of the simplest accumulators. First, one floating point adder loops back on itself to accumulating new values with the adders output. Second, once the last value arrives the 14 or fewer values in the adder are sent through a series of adders. Each adder in the series reduces the number of values in the set by half. So 4 adders will can reduce up to 16 values, which is more than the 14 possible, down to 1 value.
 
-The disadvantage of this design is that it uses 5 floating point adders, when on average less than 1 addition occurs each clock cycle. This means this design uses at least 6,000 LUTs and 5,700 registers. However, more efficent, but more complex designs exist.
+The disadvantage of this design is that it uses 5 floating point adders, when on average less than 1 addition occurs each clock cycle. This means this design uses at least 6,000 LUTs and 5,700 registers. However, more efficient, but more complex designs exist.
 \begin{figure}
     \centering
     \begin{tikzpicture}[scale=3]
@@ -259,11 +259,11 @@ The disadvantage of this design is that it uses 5 floating point adders, when on
 \end{figure}
 
 \subsection{Single Adder Accumulator}
-A multiply-accumulator with one multiplier should only need one adder to do all the accumulation. The difficulty is how to create an algorithm to achieve this. It is clear that buffering has to occur to achieve this. If the output needs to be in order than the buffering needs to be at least $O(\alpha\textrm{log}\alpha)$ to accomadate the case where one row has several valuse and fills the adder pipeline and the following rows have only 1 value. If the output can be out of order (meaning the output of the short rows that get accumulated quickly can go to the output before the long rows before it) than $O(\alpha)$ buffering may be possible.
+A multiply-accumulator with one multiplier should only need one adder to do all the accumulation. The difficulty is how to create an algorithm to achieve this. It is clear that buffering has to occur to achieve this. If the output needs to be in order than the buffering needs to be at least $O(\alpha\textrm{log}\alpha)$ to accommodate the case where one row has several values and fills the adder pipeline and the following rows have only 1 value. If the output can be out of order (meaning the output of the short rows that get accumulated quickly can go to the output before the long rows before it) than $O(\alpha)$ buffering may be possible.
 
-Other work has achieved accumulators with only 1 or 2 adders. \cite{prelim:zhuo} came up with 2 accumulators that use 2 adders and 1 that uses a single adder. However, the single adder solution had restrictions. In addition to only allowing row-major traversal it had a maximum row length of $\alpha$ (the depth of the adder pipeline). This design also required $O(\alpha^2)$ buffer space. This accumulator has two buffers. While one buffer is having its values accumulated the other is receiving new values. The adder takes in two values from the buffer in the accumulation state and then jumps $\alpha$ addresses to add two other values that belong to a different row. Table~\ref{tbl:single_adder} shows the schedualing of accumulating the products from the example in Equation~\ref{eqn:example} back in Chapter~\ref{chp:background}. For simplification we set $\alpha = 4$ instead of $\alpha = 14$.
+Other work has achieved accumulators with only 1 or 2 adders. \cite{prelim:zhuo} came up with 2 accumulators that use 2 adders and 1 that uses a single adder. However, the single adder solution had restrictions. In addition to only allowing row-major traversal it had a maximum row length of $\alpha$ (the depth of the adder pipeline). This design also required $O(\alpha^2)$ buffer space. This accumulator has two buffers. While one buffer is having its values accumulated the other is receiving new values. The adder takes in two values from the buffer in the accumulation state and then jumps $\alpha$ addresses to add two other values that belong to a different row. Table~\ref{tbl:single_adder} shows the scheduling of accumulating the products from the example in Equation~\ref{eqn:example} back in Chapter~\ref{chp:background}. For simplification we set $\alpha = 4$ instead of $\alpha = 14$.
 
-Some may notice a hazard occurs if two value in the fourth column of the buffer belong to the same row of the matrix. This is what prevents this accumulator from being able to accumulate rows greater than $\alpha$. To accomadate this case the accumulator could have an additional adder or stall the accumulator to allow time for accumulating the longer rows.
+Some may notice a hazard occurs if two value in the fourth column of the buffer belong to the same row of the matrix. This is what prevents this accumulator from being able to accumulate rows greater than $\alpha$. To accommodate this case the accumulator could have an additional adder or stall the accumulator to allow time for accumulating the longer rows.
 
 \begin{sidewaystable}
     \centering
@@ -324,13 +324,13 @@ Some may notice a hazard occurs if two value in the fourth column of the buffer 
 \end{sidewaystable}
 
 \subsection{Accumulator Using a Single Cycle Accumulation Loop}
-Another solution to this problem is to accumulate in one clock cycle. This is the approach in [\cite{prelim:bachir}]. The idea is to split the accumulation into 3 phases: The extend mantissa and reduce exponent phase, the accumulation loop phase, and the normalize phase (See Figure~\ref{fig:single_cycle_accumulator}). In the first phase the floating point format is converted into a 5-bit exponent and a 120-bit 2s complement mantissa. In the second phase the incomming value is added to the stored value. In the third phase, the stored value is converted back into IEEE-754 format.
+Another solution to this problem is to accumulate in one clock cycle. This is the approach in [\cite{prelim:bachir}]. The idea is to split the accumulation into 3 phases: The extend mantissa and reduce exponent phase, the accumulation loop phase, and the normalize phase (See Figure~\ref{fig:single_cycle_accumulator}). In the first phase the floating point format is converted into a 5-bit exponent and a 120-bit 2s complement mantissa. In the second phase the incoming value is added to the stored value. In the third phase, the stored value is converted back into IEEE-754 format.
 
-Values come out of the first phase in the following format: $m_i\times 64^{e_i}$. One way to look at this is converting from base-2 scientific notation to base-64 scientific notation. The accumulation phase is more complex than a simple 2s complement adder, because of the exponent. The difference in the exponents determines what operation the accumulator does. If the incoming exponent ($e_i$) is more than 1 greater than the stored exponent ($e_s$) than the stored value is thrown out because it is too small and the incomming value replaces the stored value. The other cases are in Table~\ref{tbl:accumulator_ops}.
+Values come out of the first phase in the following format: $m_i\times 64^{e_i}$. One way to look at this is converting from base-2 scientific notation to base-64 scientific notation. The accumulation phase is more complex than a simple 2s complement adder, because of the exponent. The difference in the exponents determines what operation the accumulator does. If the incoming exponent ($e_i$) is more than 1 greater than the stored exponent ($e_s$) than the stored value is thrown out because it is too small and the incoming value replaces the stored value. The other cases are in Table~\ref{tbl:accumulator_ops}.
 
-There is a hazard of overflowing or underflow that must be taken into account. By monitoring when there is a risk of overflowing (the first 2 bits of the stored matissa are different) or unflowing the (first 66 bits are the same) then the result needs to be shifted right or left 64 bits to avoid the hazard.
+There is a hazard of overflowing or underflow that must be taken into account. By monitoring when there is a risk of overflowing (the first 2 bits of the stored mantissa are different) or underflowing the (first 66 bits are the same) then the result needs to be shifted right or left 64 bits to avoid the hazard.
 
-As you may be noticing even this method is hampering the max frequency. Phase two needs a leading 0/1 detector to determine if $m_s$ is at risk of underflowing or overflowing. simultaniously $e_s - e_i$ is being calculated. This then determines the addition to occur. alternatively, all possible additions can occur first and then the correct value is muxed to the input of the $m_s$ register. Using a Xilinx Virtex-5 the work in \cite{prelim:bachir} achieved a frequency of 134Mhz to 247Mhz depending on the design tradoffs they used.
+As you may be noticing even this method is hampering the max frequency. Phase two needs a leading 0/1 detector to determine if $m_s$ is at risk of underflowing or overflowing. Simultaneously $e_s - e_i$ is being calculated. This then determines the addition to occur. Alternatively, all possible additions can occur first and then the correct value is muxed to the input of the $m_s$ register. Using a Xilinx Virtex-5 the work in \cite{prelim:bachir} achieved a frequency of 134Mhz to 247Mhz depending on the design trade offs they used.
 
 \begin{figure}
     \begin{tikzpicture}[scale=.9]
@@ -349,12 +349,12 @@ As you may be noticing even this method is hampering the max frequency. Phase tw
         \draw[->,shorten >=2pt] (p2.east |- 0,0) -- (p3.west |- 0,0) node [midway,anchor=south]{$e_s$};
 
     \end{tikzpicture}
-    \caption[The in-order accumulator.]{This shows the basic design of an accumualtor with the goal of minimizing the critical loop path so that values can be accumulated in order.}
+    \caption[The in-order accumulator.]{This shows the basic design of an accumulator with the goal of minimizing the critical loop path so that values can be accumulated in order.}
     \label{fig:single_cycle_accumulator}
 \end{figure}
 
 \begin{table}
-    \caption[How the stored value is updated in a in-order accumulator based on the stored value and incomming value.]{Based on the difference of the incomming exponent $e_i$ and the stored exponent $e_s$ the accumulator does a different operation to add the two values together}
+    \caption[How the stored value is updated in a in-order accumulator based on the stored value and incomming value.]{Based on the difference of the incoming exponent $e_i$ and the stored exponent $e_s$ the accumulator does a different operation to add the two values together}
     \label{tbl:accumulator_ops}
     \begin{tabular}{c|cc|cc|cc}
         & \multicolumn{2}{c|}{underflow} & \multicolumn{2}{c|}{overflow} & \multicolumn{2}{c}{other} \\
@@ -370,17 +370,17 @@ As you may be noticing even this method is hampering the max frequency. Phase tw
 
 \section{Multiply-accumulator with an Intermediator}
 \label{sec:intermediator}
-The problem with all these designs is that they require row-major traversal. This handicap makes these MACs unusable for our purposes. The requirements fo our MAC is as follows:
+The problem with all these designs is that they require row-major traversal. This handicap makes these MACs unusable for our purposes. The requirements of our MAC is as follows:
 \begin{enumerate}
-    \item Within a 512 row section the MAC can recieve elements in any order.
-    \item The MAC must recieve all the elements in one 512 row section before proceeding to the next 512 row section.
+    \item Within a 512 row section the MAC can receive elements in any order.
+    \item The MAC must receive all the elements in one 512 row section before proceeding to the next 512 row section.
     \item Each row must have at least one element.
     \item The MAC can stall, but not stall often enough to significantly effect throughput.
 
 \end{enumerate}
-To achieve this we created a MAC that uses one multilier and one adder and one Intermediator block (See \figurename~\ref{fig:mac}). This Intermediator stores up to one intermediate $y$ value for each row in a dual port RAM. This RAM is central to the design of the Intermediator.
+To achieve this we created a MAC that uses one multiplier and one adder and one Intermediator block (See \figurename~\ref{fig:mac}). This Intermediator stores up to one intermediate $y$ value for each row in a dual port RAM. This RAM is central to the design of the Intermediator.
 
-\par In our previosu work, $R^3$ [\cite{prelim:townsend}], we introduced the Intermediator but it was only capable of storing 32 intermediate $y$ vector values. In this design, we expand this to 1024 (the minimum depth of one dual port RAM block in most Xilinx, Altera and Lattice FPGAs). Both Intermediator designs allow the matrix to be traversed in a loosely row major traversal and the MAC still behaves correctly. The step from 32 to 1024 intermediate values allows more freedom in the traversal. Earlier in Chapter \ref{chp:traversal}, we discussed traversals that abide by this rule and allow for easy reuse of $x$ vector values.
+\par In our previous work, $R^3$ [\cite{prelim:townsend}], we introduced the Intermediator but it was only capable of storing 32 intermediate $y$ vector values. In this design, we expand this to 1024 (the minimum depth of one dual port RAM block in most Xilinx, Altera and Lattice FPGAs). Both Intermediator designs allow the matrix to be traversed in a loosely row major traversal and the MAC still behaves correctly. The step from 32 to 1024 intermediate values allows more freedom in the traversal. Earlier in Chapter \ref{chp:traversal}, we discussed traversals that abide by this rule and allow for easy reuse of $x$ vector values.
 
 
 \begin{figure}
@@ -426,7 +426,7 @@ To achieve this we created a MAC that uses one multilier and one adder and one I
 \path [draw, thick, >=stealth',->, shorten >=2pt] (-.5,-.5) --node[sloped, fill=white, inner sep=1pt]{val} (-.5,-2.5);
 \end{tikzpicture} %
 
-\caption[The multiply-accumulator with an Intermediator.]{The multiply-accumulator block handles multiple intermediate $y$ values at a time. Every clock cycle, the Intermediator block sends 2 values that belong to the same row to the adder, while simultaniously it receives 1 value from the adder and 1 from the multiplier, which my belong to different rows.}
+\caption[The multiply-accumulator with an Intermediator.]{The multiply-accumulator block handles multiple intermediate $y$ values at a time. Every clock cycle, the Intermediator block sends 2 values that belong to the same row to the adder, while simultaneously it receives 1 value from the adder and 1 from the multiplier, which my belong to different rows.}
 \label{fig:mac}
 \end{figure}
 \subsection{Memory and States}
@@ -761,7 +761,7 @@ There are three hazards to consider when designing this MAC. First, if the inter
 
 For the first case, the intermediator-to-adder FIFO would be at risk of overflowing when case 6 (both inputs coorespond to full slots in the intermediator) occurs very often. Although we do not have a proof, we found no way for the intermediator-to-adder FIFO to ever get more than 8. But, in case this does happen, we designed the FIFO to signal a stall to prevent more values from coming in.
 
-For the second case, the Intermediator would be at risk of recieving values from the multipler that would overwrite values that are accumulated and being stored. This can happen if most of the rows have only one value.
+For the second case, the Intermediator would be at risk of receiving values from the multiplier that would overwrite values that are accumulated and being stored. This can happen if most of the rows have only one value.
 
 A new FIFO between the multiplier and intermediator multiplier-to-intermediator FIFO is introduced to prevent the red window from advancing.
 

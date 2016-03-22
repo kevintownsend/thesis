@@ -1,8 +1,9 @@
 \chapter{HIGH LEVEL DESIGN}
 \label{chp:high_level_design}
-This chapter is about creating an implementation using the subcomponents mentioned in the previous chapter. First, we will look at previous designs to guide our decisions on designing the processing element and the system as a whole. Second, we will look at the system design (everything higher than a single processing element. Second, we will look at the file format. Second, we will look at our processing element design. Third, we will look at how to deal with memory latency.
+This chapter is about creating an implementation using the subcomponents mentioned in the previous chapter. The rest of the chapter is organized as follows. In Section~\ref{sec:system_design}, We will look at the system design (everything higher than a single processing element). In Section~\ref{sec:pe_design}, we will look at our processing element design. In Section~\ref{sec:file_format}, we will look at the file format. In Section~\ref{sec:latency}, we will look at how to deal with memory latency. Finally, in Section~\ref{sec:results}, we look at the results achieve from the implementation.
 \section{System Design}
-Because each processing element acts indepedently during the SpMV computation it is fairly easy to come up with a high level organization. Systolic arrays work well on FPGAs \cite{prelim:johnson}. So we will use a simple 1-D systolic array for communication (See figure~\ref{fig:systolic_array}). The high amount of computation to instructions means the $O(p)$ time to send insturctions is negligable. In addition, each PE connects to the shared memory and external memory. This platform has 16 virtual ports (8, 300Mhz ports multiplexed into 16 150Mhz virtual ports).
+\label{sec:system_design}
+Because each processing element acts independently during the SpMV computation it is fairly easy to come up with a high level organization. Systolic arrays work well on FPGAs \cite{prelim:johnson}. So we will use a simple 1-D systolic array for communication (See figure~\ref{fig:systolic_array}). The high amount of computation to instructions means the $O(p)$ time to send instructions is negligible. In addition, each PE connects to the shared memory and external memory. This platform has 16 virtual ports (8, 300Mhz ports multiplexed into 16 150Mhz virtual ports).
 \begin{figure}
     \centering
     \begin{tikzpicture}
@@ -33,6 +34,7 @@ Because each processing element acts indepedently during the SpMV computation it
     \label{fig:systolic_array}
 \end{figure}
 \section{Processor Design}
+\label{sec:pe_design}
 \begin{table}
     \centering
     \caption{The opcodes for the SpMV processor.}
@@ -57,7 +59,7 @@ Because each processing element acts indepedently during the SpMV computation it
         \hline
         0111 & READ & register address & N/A & This instructs the PE to return the data on the specified register.\\
         \hline
-        1000 & RETURN & register address & data & This is sent from the PE after the READ instruction is recieved.\\
+        1000 & RETURN & register address & data & This is sent from the PE after the READ instruction is received.\\
         \hline
         1001-1111 & RESERVED & N/A & N/A & N/A \\
         \hline
@@ -103,7 +105,7 @@ One way to describe our processing element is that it is a very small instructio
         \hline
         13 & nnz fzip count down & Starts at nnz - 1 and decreases by one for each floating point value that exits the decoder.\\
         \hline
-        14-15 & reservered & Used for debugging.\\
+        14-15 & reserved & Used for debugging.\\
         \hline
     \end{tabular}
 
@@ -114,7 +116,8 @@ There are 14, 48-bit registers on each processing element. The function of each 
 The debug registers give a better understanding of the operation of the processing element during the SpMV operation.
 
 \section{File format}
-We looked at previous file formats like gzip [\cite{prelim:deutsch}] to help create a new file format. We start with a 256-byte header. This header has reserved values for future versions, pointers to the sections of the file, and other values about the matrix or compression streams. each value in the header is 8-bytes. The specification of each value is described in Table~\ref{tbl:header}.
+\label{sec:file_format}
+We looked at previous file formats like gzip [\cite{prelim:deutsch}] to help create a new file format. We start with a 256-byte header. This header has reserved values for future versions, pointers to the sections of the file, and other values about the matrix or compression streams. Each value in the header is 8-bytes. The specification of each value is described in Table~\ref{tbl:header}.
 
 \begin{table}
     \centering
@@ -163,11 +166,12 @@ We looked at previous file formats like gzip [\cite{prelim:deutsch}] to help cre
     \end{tabular}
 \end{table}
 
-Three constant length sections after the header. First, the codes for the sparse pattern matrix compression. Second, the codes for the fzip compression. Third, the common floating point values (also for fzip comression). These sections will take a small fraction of the total file space for large matrices. For this reason we choose not to try to compress these sections further and just leave them as simple as possible.
+Three constant length sections after the header. First, the codes for the sparse pattern matrix compression. Second, the codes for the fzip compression. Third, the common floating point values (also for fzip compression). These sections will take a small fraction of the total file space for large matrices. For this reason we choose not to try to compress these sections further and just leave them as simple as possible.
 
-Four data streams follow after all the decoding information, the code and argument stream for the indices and the code and argument streams for the floating point values. These streams have a varible bit length but there exists extra buffer bits to get to a 8 byte boundry. To make the design of the decoders easier there is at least 8 bytes of buffer space. For the fzip argument stream, there is at least 48 bytes of buffer space to increase throughput of decoding floating point values.
+Four data streams follow after all the decoding information, the code and argument stream for the indices and the code and argument streams for the floating point values. These streams have a variable bit length but there exists extra buffer bits to get to a 8 byte boundary. To make the design of the decoders easier there is at least 8 bytes of buffer space. For the fzip argument stream, there is at least 48 bytes of buffer space to increase throughput of decoding floating point values.
 
 \section{Memory Latency}
+\label{sec:latency}
 \begin{figure}
 \begin{tikzpicture}[xscale=2,yscale=2]
 \node(req) at (0,0) [draw]{\shortstack{Request\\Arbitration}};
@@ -212,7 +216,8 @@ We use a round robin for request arbitration. We use 3 different signals to dete
 \par In practice this still does not achieve good throughput when computing memory bound (difficult to compress) matrices. The problem is that the fzip argument stream (the non-encoded bits or common value index stream) ends up starving and slows down the decoder. To solve this we give priority to this stream by only moving from it when the tracker indicates no more in flight messages can be accepted. This means the timer and the FIFO saturation will not cause the request arbiter to stop reading this stream.
 %TODO: explain why
 \section{Results}
-$R^3$, our previous work, achieved up to 13.6 GFLOPS and an average performance of 6 GFLOPS on the non-pattern matrices used by \cite{prelim:bell}. We were able to nearly double this performance to an average of 11 GFLOPS.
+\label{sec:results}
+$R^3$, our previous work, achieved up to 13.6 GFLOPS and an average performance of 7.6 GFLOPS. In this work we were able to achieve up to 16.6 GFLOPS and achieve an average performance of 9.4 GFLOPS.
 
 \begin{figure*}
 \centering
@@ -298,7 +303,7 @@ $R^3$, our previous work, achieved up to 13.6 GFLOPS and an average performance 
 }
 
 \foreach \i/\j/\k/\l in {%
-0/0.42000000000000004/1/0.8699999999999999,  1/0.8699999999999999/2/0.95,  2/0.95/3/2.06,  3/2.06/4/2.2800000000000002,  4/2.2800000000000002/5/2.18,  5/2.18/6/2.2199999999999998,  6/2.2199999999999998/7/2.2199999999999998,  7/2.2199999999999998/8/2.68,  8/2.68/9/2.3,  9/2.3/10/2.7800000000000002,  10/2.7800000000000002/11/2.04,  11/2.04/12/2.7,  12/2.7/13/2.66,  13/2.66/14/2.02
+    0/0.42000000000000004/1/0.78,  1/0.78/2/0.6799999999999999,  2/0.6799999999999999/3/1.1,  3/1.1/4/1.1400000000000001,  4/1.1400000000000001/5/1.3,  5/1.3/6/1.54,  6/1.54/7/1.7,  7/1.7/8/3.04,  8/3.04/9/1.8,  9/1.8/10/3.1,  10/3.1/11/3.3200000000000003,  11/3.3200000000000003/12/3.08,  12/3.08/13/3.1399999999999997,  13/3.1399999999999997/14/2.2
 }{
  \ifthenelse{\equal{\blackandwhite}{true}}{
 	\draw [black!35] (\i,\j) -- (\k,\l);
@@ -394,20 +399,20 @@ $R^3$, our previous work, achieved up to 13.6 GFLOPS and an average performance 
 %new points
 \foreach \i/\x/\y/\f/\q/\u in {%
 0/0.083492/0.42000000000000004/2.1/0/0,%
-1/0.17405/0.8699999999999999/4.35/0/0,%
-2/0.190106/0.95/4.75/0/0,%
-3/0.588552/2.06/10.3/0/0,%
-4/1.080044/2.2800000000000002/11.4/0/0,%
-5/1.917872/2.18/10.9/0/0,%
-6/2.066946/2.2199999999999998/11.1/0/0,%
-7/2.546778/2.2199999999999998/11.1/0/0,%
-8/3.833856/2.68/13.4/0/0,%
-9/4.20045/2.3/11.5/0/0,%
-10/4.658184/2.7800000000000002/13.9/0/0,%
-11/7.136352/2.04/10.2/0/0,%
-12/8.0/2.7/13.5/0/0,%
-13/8.014766/2.66/13.3/0/0,%
-14/12.02096/2.02/10.1/0/0
+1/0.17405/0.78/3.9/0/0,%
+2/0.190106/0.6799999999999999/3.4/0/0,%
+3/0.588552/1.1/5.5/0/0,%
+4/1.080044/1.1400000000000001/5.7/0/0,%
+5/1.917872/1.3/6.5/0/0,%
+6/2.066946/1.54/7.7/0/0,%
+7/2.546778/1.7/8.5/0/0,%
+8/3.833856/3.04/15.2/0/0,%
+9/4.20045/1.8/9.0/0/0,%
+10/4.658184/3.1/15.5/0/0,%
+11/7.136352/3.3200000000000003/16.6/0/0,%
+12/8.0/3.08/15.4/0/0,%
+13/8.014766/3.1399999999999997/15.7/0/0,%
+14/12.02096/2.2/11.0/0/0
 }{
  \ifthenelse{\equal{\blackandwhite}{true}}{
 	\draw (\i,\y) node[greenSquare]{} node[fill=white,inner sep=0pt, anchor=west,rotate=30,xshift=\q cm + 3pt, yshift=\u cm]{\color{black!35} \scriptsize $\f$};
@@ -422,18 +427,18 @@ $R^3$, our previous work, achieved up to 13.6 GFLOPS and an average performance 
  }{
 	\node at (key) [rectangle,anchor=west, xshift=-2cm, yshift=1cm]{\tikz{\draw (0,1pt) [fill=red]circle (2.5pt);} $R^3$};
  }
-\node at (key) [rectangle,anchor=west, xshift=-2cm, yshift=1.7cm]{\shortstack{\tikz{\draw (0,1pt) node[blueGreenDiamond]{};} New Design}};
+\node at (key) [rectangle,anchor=west, xshift=-2cm, yshift=1.7cm]{\shortstack{\tikz{\draw (0,1pt) node[blueGreenDiamond]{};} This Work}};
 \node at (key) [rectangle,anchor=west, xshift=-2cm, yshift=.3cm]{\shortstack{\tikz{\draw (0,1pt) node[yellowStar]{};} \cite{prelim:nagar1} }};
 %\node <3,5>at (key) [rectangle,anchor=west, xshift=-2cm, yshift=0cm]{\tikz{\draw (0,1pt) node[blueGreenDiamond]{};} Nvidia Tesla S1070};
 \node at (key) [rectangle,anchor=west, xshift=-2cm, yshift=-.5cm]{\shortstack{\tikz{\draw (0,1pt) node[greenSquare]{};} Nvidia Tesla \\M2090}};
 \node at (key) [rectangle,anchor=west, xshift=-2cm, yshift=-1.5cm]{\shortstack{\tikz{\draw (0,1pt) node[blueTriangle]{};} Intel E5-2690 \\(2 CPUs)}};
 
 \end{tikzpicture}
-\caption[SpMV performance on our newest design.]{$nnz$ vs Performance on each platform. As seen we only get a small increase in performance compared to $R^3$ when $R^3$ already achieves a relatively high performance.}
+\caption[SpMV performance on our newest design.]{$nnz$ vs Performance on each platform. As seen we achieve about a 20\% increase in performance compared to $R^3$.}
 \label{fig:newResults}
 \end{figure*}
 
-Some trends do appear. Like in $R^3$ the new design does not achieve good performance on the 3 smallest matrices. This is due to the memory latency of the platform. In fact, the smallest matrix (dw8192) is so small that all of the read requests occur before the first value is multiplied.
+Some trends do appear. Like in $R^3$ the new design does not achieve good performance on the smallest matrices. This is due to the memory latency of the platform. In fact, the smallest matrix (dw8192) is so small that all of the read requests occur before the first value is multiplied.
 
 Another trend is that the more compressible matrices achieve the best performance. The 3 pattern matrices (qcd5\_4, rma10, and dense) achieve the best performance.
 

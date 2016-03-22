@@ -153,230 +153,254 @@ In the Omega multi-port memory design, the control for this network increments e
     \begin{figure}
         \center
         \begin{subfigure}{.4\linewidth}
-        \begin{tikzpicture}
-        \fill [red!50] (-.5,-2) rectangle (.5,-1.75);
-        \fill [yellow!50] (-.5,-1.75) rectangle (.5,-1.5);
-        \fill [blue!50] (-.5,-1.5) rectangle (.5,-1.25);
-        \fill [blue!50] (-.5,-1) rectangle (.5,-.75);
-        \fill [blue!50] (-.5,0) rectangle (.5,.25);
-        \fill [green!50] (-.5,-1.25) rectangle (.5,-1);
-        \fill [green!50] (-.5,-.5) rectangle (.5,-.75);
+\begin{tikzpicture}
+\fill [red!50] (0,-1.0) rectangle (.2,-0.666666666667);
+\fill [red!50] (-.5,-1.0) rectangle (0,-0.666666666667);
+\fill [green!50] (0,-1.66666666667) rectangle (.2,-1.33333333333);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,-1.66666666667) rectangle (0,-1.33333333333);
+\fill [green!50] (0,-2.0) rectangle (.2,-1.66666666667);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,-2.0) rectangle (0,-1.66666666667);
+\fill [green!50] (0,-0.666666666667) rectangle (.2,-0.333333333333);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,-0.666666666667) rectangle (0,-0.333333333333);
+\fill [green!50] (0,-0.333333333333) rectangle (.2,-1.66533453694e-16);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,-0.333333333333) rectangle (0,-1.66533453694e-16);
+\fill [green!50] (0,0.0) rectangle (.2,0.333333333333);
+\fill [green!50] (-.5,0.0) rectangle (0,0.333333333333);
+\fill [blue!50] (0,-1.33333333333) rectangle (.2,-1.0);
+\fill [blue!50] (-.5,-1.33333333333) rectangle (0,-1.0);
+
+
         \draw (-.5,-2) rectangle (0,2);
-        \draw (0,-2) rectangle (.5,2);
-        \foreach \i in {-1.75,-1.5,...,1.75}{
-            \draw (-.5,\i) -- (.5,\i);
+        \draw (0,-2) rectangle (.2,2);
+        \foreach \i in {-1.667,-1.333,...,2}{
+            \draw (-.5,\i) -- (.2,\i);
         }
+        \node (f) at (-1.7,2.0) {free};
+
+\draw[thick,>=stealth',->,shorten >=2pt] (f.east) .. controls (-1,2.0) and (-1,0.5) .. (-.5,0.497666666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,0.55) .. controls (1,0.55) and (1,0.783333333333) .. (.2,0.783333333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,0.883333333333) .. controls (1,0.883333333333) and (1,1.11666666667) .. (.2,1.11666666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,1.21666666667) .. controls (1,1.21666666667) and (1,1.45) .. (.2,1.45);
+\draw [>=stealth',->,shorten >=2pt] (.1,1.55) .. controls (1,1.55) and (1,1.78333333333) .. (.2,1.78333333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,1.88333333333) .. controls (1,1.88333333333) and (1,2.11666666667) .. (.2,2.11666666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,-1.8) .. controls (-1,-1.8) and (-1,-0.834666666667) .. (-.5,-0.834666666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,0.6) .. controls (-1,0.6) and (-1,-0.834666666667) .. (-.5,-0.834666666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,-1.4) .. controls (-1,-1.4) and (-1,-1.50066666667) .. (-.5,-1.50066666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,1.0) .. controls (-1,1.0) and (-1,0.164333333333) .. (-.5,0.164333333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,-1.45) .. controls (1,-1.45) and (1,-1.88333333333) .. (.2,-1.88333333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,-1.78333333333) .. controls (1,-1.78333333333) and (1,-0.55) .. (.2,-0.55);
+\draw [>=stealth',->,shorten >=2pt] (.1,-0.45) .. controls (1,-0.45) and (1,-0.216666666667) .. (.2,-0.216666666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,-0.116666666667) .. controls (1,-0.116666666667) and (1,0.116666666667) .. (.2,0.116666666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,-1.0) .. controls (-1,-1.0) and (-1,-1.16766666667) .. (-.5,-1.16766666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,1.4) .. controls (-1,1.4) and (-1,-1.16766666667) .. (-.5,-1.16766666667);
+
         \node at (-2.5,-1)[rotate=90]{head};
         \node at (-2.5,1)[rotate=90]{tail};
-        \node (f) at (-1.7,2.5) {free};
         \fill [red!50] (-2,-2) rectangle (-1.5,-1.6);
-        \fill [yellow!50] (-2,-1.6) rectangle (-1.5,-1.2);
+        \fill [green!50] (-2,-1.6) rectangle (-1.5,-1.2);
         \fill [blue!50] (-2,-1.2) rectangle (-1.5,-.8);
-        \fill [green!50] (-2,-.8) rectangle (-1.5,-.4);
+        
+
         \fill [red!50] (-2,.4) rectangle (-1.5,.8);
-        \fill [yellow!50] (-2,.8) rectangle (-1.5,1.2);
+        \fill [green!50] (-2,.8) rectangle (-1.5,1.2);
         \fill [blue!50] (-2,1.2) rectangle (-1.5,1.6);
-        \fill [green!50] (-2,1.6) rectangle (-1.5,2);
-        \draw (-2,-2) rectangle (-1.5, -.4);
-        \draw (-2,2) rectangle (-1.5, .4);
+        
+
+        \draw (-2,-2) rectangle (-1.5, -.8);
+        \draw (-2,.4) rectangle (-1.5, 1.6);
         \foreach \i in {-1.6,-1.2,-.8,.8,1.2,1.6}{
             \draw (-2,\i) -- (-1.5,\i);
         }
-        \foreach[count=\i] \l/\h in {0/0,1/1,2/4,3/5}{
-            \draw [thick,->] (-1.5,-1.8+\i*.4-.4) -- (-.5,\l*.25-1.875);
-            \draw [thick,->] (-1.5,.6+\i*.4-.4) -- (-.5,\h*.25-1.875);
-        }
-        \draw (-.5,-1.5) -- (0,-1.25);
-        \draw (-.5,-1.25) -- (0,-1.5);
-        \draw (-.5,-1.25) -- (0,-1);
-        \draw (-.5,-1) -- (0,-1.25);
-        \draw (-.5,.25) -- (0,0);
-        \draw (-.5,0) -- (0,.25);
-        \draw [thick,->] (f.east) -- (-.5,-.375);
-        \draw [->] (.1,-1.375) -- (.1,.125);
-        \draw [->] (.2,.125) -- (.2,-.875);
-        \draw [->] (.3,-.375) -- (.3,-.125);
-        \draw [->] (.4,-.125) -- (.4,.375);
-        \draw [->] (.3,-1.125) -- (.3,-.625);
-        \foreach \i in {.375,.875,...,1.625}{
-            \draw [->] (.1,\i) -- (.1,\i+.25);
-            \draw [->] (.2,\i+.25) -- (.2,\i+.5);
-        }
-        \draw [->] (.3,1.875) -- (.3,2.125);
-
         \end{tikzpicture}
         \caption{Initial example}
         \label{fig:linked0}
     \end{subfigure}
         \begin{subfigure}{.4\linewidth}
+\begin{tikzpicture}
+\fill [red!50] (0,-1.0) rectangle (.2,-0.666666666667);
+\fill [red!50] (-.5,-1.0) rectangle (0,-0.666666666667);
+\fill [green!50] (0,-1.66666666667) rectangle (.2,-1.33333333333);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,-1.66666666667) rectangle (0,-1.33333333333);
+\fill [green!50] (0,-2.0) rectangle (.2,-1.66666666667);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,-2.0) rectangle (0,-1.66666666667);
+\fill [green!50] (0,-0.666666666667) rectangle (.2,-0.333333333333);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,-0.666666666667) rectangle (0,-0.333333333333);
+\fill [green!50] (0,-0.333333333333) rectangle (.2,-1.66533453694e-16);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,-0.333333333333) rectangle (0,-1.66533453694e-16);
+\fill [green!50] (0,0.0) rectangle (.2,0.333333333333);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,0.0) rectangle (0,0.333333333333);
+\fill [green!50] (0,0.333333333333) rectangle (.2,0.666666666667);
+\fill [green!50] (-.5,0.333333333333) rectangle (0,0.666666666667);
+\fill [blue!50] (0,-1.33333333333) rectangle (.2,-1.0);
+\fill [blue!50] (-.5,-1.33333333333) rectangle (0,-1.0);
 
-        \begin{tikzpicture}
-        \fill [red!50] (-.5,-2) rectangle (.5,-1.75);
-        \fill [red!50] (-.5,-.5) rectangle (.5,-.25);
-        \fill [yellow!50] (-.5,-1.75) rectangle (.5,-1.5);
-        \fill [blue!50] (-.5,-1.5) rectangle (.5,-1.25);
-        \fill [blue!50] (-.5,-1) rectangle (.5,-.75);
-        \fill [blue!50] (-.5,0) rectangle (.5,.25);
-        \fill [green!50] (-.5,-1.25) rectangle (.5,-1);
-        \fill [green!50] (-.5,-.5) rectangle (.5,-.75);
+
         \draw (-.5,-2) rectangle (0,2);
-        \draw (0,-2) rectangle (.5,2);
-        \foreach \i in {-1.75,-1.5,...,1.75}{
-            \draw (-.5,\i) -- (.5,\i);
+        \draw (0,-2) rectangle (.2,2);
+        \foreach \i in {-1.667,-1.333,...,2}{
+            \draw (-.5,\i) -- (.2,\i);
         }
+        \node (f) at (-1.7,2.0) {free};
+\draw[thick,>=stealth',->,shorten >=2pt] (f.east) .. controls (-1,2.0) and (-1,0.833333333333) .. (-.5,0.830666666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,0.883333333333) .. controls (1,0.883333333333) and (1,1.11666666667) .. (.2,1.11666666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,1.21666666667) .. controls (1,1.21666666667) and (1,1.45) .. (.2,1.45);
+\draw [>=stealth',->,shorten >=2pt] (.1,1.55) .. controls (1,1.55) and (1,1.78333333333) .. (.2,1.78333333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,1.88333333333) .. controls (1,1.88333333333) and (1,2.11666666667) .. (.2,2.11666666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,-1.8) .. controls (-1,-1.8) and (-1,-0.834666666667) .. (-.5,-0.834666666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,0.6) .. controls (-1,0.6) and (-1,-0.834666666667) .. (-.5,-0.834666666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,-1.4) .. controls (-1,-1.4) and (-1,-1.50066666667) .. (-.5,-1.50066666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,1.0) .. controls (-1,1.0) and (-1,0.497333333333) .. (-.5,0.497333333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,-1.45) .. controls (1,-1.45) and (1,-1.88333333333) .. (.2,-1.88333333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,-1.78333333333) .. controls (1,-1.78333333333) and (1,-0.55) .. (.2,-0.55);
+\draw [>=stealth',->,shorten >=2pt] (.1,-0.45) .. controls (1,-0.45) and (1,-0.216666666667) .. (.2,-0.216666666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,-0.116666666667) .. controls (1,-0.116666666667) and (1,0.116666666667) .. (.2,0.116666666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,0.216666666667) .. controls (1,0.216666666667) and (1,0.45) .. (.2,0.45);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,-1.0) .. controls (-1,-1.0) and (-1,-1.16766666667) .. (-.5,-1.16766666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,1.4) .. controls (-1,1.4) and (-1,-1.16766666667) .. (-.5,-1.16766666667);
         \node at (-2.5,-1)[rotate=90]{head};
         \node at (-2.5,1)[rotate=90]{tail};
-        \node (f) at (-1.7,2.5) {free};
         \fill [red!50] (-2,-2) rectangle (-1.5,-1.6);
-        \fill [yellow!50] (-2,-1.6) rectangle (-1.5,-1.2);
+        \fill [green!50] (-2,-1.6) rectangle (-1.5,-1.2);
         \fill [blue!50] (-2,-1.2) rectangle (-1.5,-.8);
-        \fill [green!50] (-2,-.8) rectangle (-1.5,-.4);
+        
+
         \fill [red!50] (-2,.4) rectangle (-1.5,.8);
-        \fill [yellow!50] (-2,.8) rectangle (-1.5,1.2);
+        \fill [green!50] (-2,.8) rectangle (-1.5,1.2);
         \fill [blue!50] (-2,1.2) rectangle (-1.5,1.6);
-        \fill [green!50] (-2,1.6) rectangle (-1.5,2);
-        \draw (-2,-2) rectangle (-1.5, -.4);
-        \draw (-2,2) rectangle (-1.5, .4);
+        
+
+        \draw (-2,-2) rectangle (-1.5, -.8);
+        \draw (-2,.4) rectangle (-1.5, 1.6);
         \foreach \i in {-1.6,-1.2,-.8,.8,1.2,1.6}{
             \draw (-2,\i) -- (-1.5,\i);
         }
-        \foreach[count=\i] \l/\h in {0/6,1/1,2/4,3/5}{
-            \draw [thick,->] (-1.5,-1.8+\i*.4-.4) -- (-.5,\l*.25-1.875);
-            \draw [thick,->] (-1.5,.6+\i*.4-.4) -- (-.5,\h*.25-1.875);
-        }
-        \draw (-.5,-2) -- (0,-1.75);
-        \draw (-.5,-1.75) -- (0,-2);
-        \draw (-.5,-1.5) -- (0,-1.25);
-        \draw (-.5,-1.25) -- (0,-1.5);
-        \draw (-.5,-1.25) -- (0,-1);
-        \draw (-.5,-1) -- (0,-1.25);
-        \draw (-.5,.25) -- (0,0);
-        \draw (-.5,0) -- (0,.25);
-        \draw [thick,->] (f.east) -- (-.5,-.125);
-        \draw [->] (.1,-1.375) -- (.1,.125);
-        \draw [->] (.2,.125) -- (.2,-.875);
-        \draw [->] (.4,-1.875) -- (.4,-.375);
-        \draw [->] (.4,-.125) -- (.4,.375);
-        \draw [->] (.3,-1.125) -- (.3,-.625);
-        \foreach \i in {.375,.875,...,1.625}{
-            \draw [->] (.1,\i) -- (.1,\i+.25);
-            \draw [->] (.2,\i+.25) -- (.2,\i+.5);
-        }
-        \draw [->] (.3,1.875) -- (.3,2.125);
-
         \end{tikzpicture}
+
         \caption{First clock cycle}
         \label{fig:linked1}
     \end{subfigure}
         \begin{subfigure}{.4\linewidth}
+\begin{tikzpicture}
+\fill [red!50] (0,-1.0) rectangle (.2,-0.666666666667);
+\fill [red!50] (-.5,-1.0) rectangle (0,-0.666666666667);
+\fill [green!50] (0,-2.0) rectangle (.2,-1.66666666667);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,-2.0) rectangle (0,-1.66666666667);
+\fill [green!50] (0,-0.666666666667) rectangle (.2,-0.333333333333);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,-0.666666666667) rectangle (0,-0.333333333333);
+\fill [green!50] (0,-0.333333333333) rectangle (.2,-1.66533453694e-16);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,-0.333333333333) rectangle (0,-1.66533453694e-16);
+\fill [green!50] (0,0.0) rectangle (.2,0.333333333333);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,0.0) rectangle (0,0.333333333333);
+\fill [green!50] (0,0.333333333333) rectangle (.2,0.666666666667);
+\fill [green!50] (-.5,0.333333333333) rectangle (0,0.666666666667);
+\fill [blue!50] (0,-1.33333333333) rectangle (.2,-1.0);
+\fill [blue!50] (-.5,-1.33333333333) rectangle (0,-1.0);
 
-        \begin{tikzpicture}
-        \fill [red!50] (-.5,-2) rectangle (.5,-1.75);
-        \fill [red!50] (-.5,-.5) rectangle (.5,-.25);
-        \fill [yellow!50] (-.5,-1.75) rectangle (.5,-1.5);
-        \fill [blue!50] (-.5,-1) rectangle (.5,-.75);
-        \fill [blue!50] (-.5,0) rectangle (.5,.25);
-        \fill [green!50] (-.5,-1.25) rectangle (.5,-1);
-        \fill [green!50] (-.5,-.5) rectangle (.5,-.75);
+
         \draw (-.5,-2) rectangle (0,2);
-        \draw (0,-2) rectangle (.5,2);
-        \foreach \i in {-1.75,-1.5,...,1.75}{
-            \draw (-.5,\i) -- (.5,\i);
+        \draw (0,-2) rectangle (.2,2);
+        \foreach \i in {-1.667,-1.333,...,2}{
+            \draw (-.5,\i) -- (.2,\i);
         }
+        \node (f) at (-1.7,2.0) {free};
+\draw[thick,>=stealth',->,shorten >=2pt] (f.east) .. controls (-1,2.0) and (-1,-1.5) .. (-.5,-1.50033333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,-1.45) .. controls (1,-1.45) and (1,0.783333333333) .. (.2,0.783333333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,0.883333333333) .. controls (1,0.883333333333) and (1,1.11666666667) .. (.2,1.11666666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,1.21666666667) .. controls (1,1.21666666667) and (1,1.45) .. (.2,1.45);
+\draw [>=stealth',->,shorten >=2pt] (.1,1.55) .. controls (1,1.55) and (1,1.78333333333) .. (.2,1.78333333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,1.88333333333) .. controls (1,1.88333333333) and (1,2.11666666667) .. (.2,2.11666666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,-1.8) .. controls (-1,-1.8) and (-1,-0.834666666667) .. (-.5,-0.834666666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,0.6) .. controls (-1,0.6) and (-1,-0.834666666667) .. (-.5,-0.834666666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,-1.4) .. controls (-1,-1.4) and (-1,-1.83366666667) .. (-.5,-1.83366666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,1.0) .. controls (-1,1.0) and (-1,0.497333333333) .. (-.5,0.497333333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,-1.78333333333) .. controls (1,-1.78333333333) and (1,-0.55) .. (.2,-0.55);
+\draw [>=stealth',->,shorten >=2pt] (.1,-0.45) .. controls (1,-0.45) and (1,-0.216666666667) .. (.2,-0.216666666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,-0.116666666667) .. controls (1,-0.116666666667) and (1,0.116666666667) .. (.2,0.116666666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,0.216666666667) .. controls (1,0.216666666667) and (1,0.45) .. (.2,0.45);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,-1.0) .. controls (-1,-1.0) and (-1,-1.16766666667) .. (-.5,-1.16766666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,1.4) .. controls (-1,1.4) and (-1,-1.16766666667) .. (-.5,-1.16766666667);
+
         \node at (-2.5,-1)[rotate=90]{head};
         \node at (-2.5,1)[rotate=90]{tail};
-        \node (f) at (-1.7,2.5) {free};
         \fill [red!50] (-2,-2) rectangle (-1.5,-1.6);
-        \fill [yellow!50] (-2,-1.6) rectangle (-1.5,-1.2);
+        \fill [green!50] (-2,-1.6) rectangle (-1.5,-1.2);
         \fill [blue!50] (-2,-1.2) rectangle (-1.5,-.8);
-        \fill [green!50] (-2,-.8) rectangle (-1.5,-.4);
+        
+
         \fill [red!50] (-2,.4) rectangle (-1.5,.8);
-        \fill [yellow!50] (-2,.8) rectangle (-1.5,1.2);
+        \fill [green!50] (-2,.8) rectangle (-1.5,1.2);
         \fill [blue!50] (-2,1.2) rectangle (-1.5,1.6);
-        \fill [green!50] (-2,1.6) rectangle (-1.5,2);
-        \draw (-2,-2) rectangle (-1.5, -.4);
-        \draw (-2,2) rectangle (-1.5, .4);
+        
+
+        \draw (-2,-2) rectangle (-1.5, -.8);
+        \draw (-2,.4) rectangle (-1.5, 1.6);
         \foreach \i in {-1.6,-1.2,-.8,.8,1.2,1.6}{
             \draw (-2,\i) -- (-1.5,\i);
         }
-        \foreach[count=\i] \l/\h in {0/6,1/1,8/4,3/5}{
-            \draw [thick,->] (-1.5,-1.8+\i*.4-.4) -- (-.5,\l*.25-1.875);
-            \draw [thick,->] (-1.5,.6+\i*.4-.4) -- (-.5,\h*.25-1.875);
-        }
-        \draw (-.5,-2) -- (0,-1.75);
-        \draw (-.5,-1.75) -- (0,-2);
-        \draw (-.5,-1.25) -- (0,-1);
-        \draw (-.5,-1) -- (0,-1.25);
-        \draw (-.5,.25) -- (0,0);
-        \draw (-.5,0) -- (0,.25);
-        \draw [thick,->] (f.east) -- (-.5,-1.375);
-        \draw [->] (.1,-1.375) -- (.1,-.125);
-        \draw [->] (.2,.125) -- (.2,-.875);
-        \draw [->] (.4,-1.875) -- (.4,-.375);
-        \draw [->] (.4,-.125) -- (.4,.375);
-        \draw [->] (.3,-1.125) -- (.3,-.625);
-        \foreach \i in {.375,.875,...,1.625}{
-            \draw [->] (.1,\i) -- (.1,\i+.25);
-            \draw [->] (.2,\i+.25) -- (.2,\i+.5);
-        }
-        \draw [->] (.3,1.875) -- (.3,2.125);
-
         \end{tikzpicture}
+
         \caption{Second clock cycle}
         \label{fig:linked2}
     \end{subfigure}
         \begin{subfigure}{.4\linewidth}
-        \begin{tikzpicture}
-        \fill [green!50] (-.5,-2) rectangle (.5,-1.75);
-        \fill [red!50] (-.5,-.5) rectangle (.5,-.25);
-        \fill [yellow!50] (-.5,-1.75) rectangle (.5,-1.5);
-        \fill [blue!50] (-.5,-1) rectangle (.5,-.75);
-        \fill [blue!50] (-.5,0) rectangle (.5,.25);
-        \fill [green!50] (-.5,-1.25) rectangle (.5,-1);
-        \fill [green!50] (-.5,-.5) rectangle (.5,-.75);
+\begin{tikzpicture}
+\fill [red!50] (0,-1.0) rectangle (.2,-0.666666666667);
+\fill [pattern=north east lines,preaction={fill,red!50}] (-.5,-1.0) rectangle (0,-0.666666666667);
+\fill [red!50] (0,-2.0) rectangle (.2,-1.66666666667);
+\fill [red!50] (-.5,-2.0) rectangle (0,-1.66666666667);
+\fill [green!50] (0,-0.666666666667) rectangle (.2,-0.333333333333);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,-0.666666666667) rectangle (0,-0.333333333333);
+\fill [green!50] (0,-0.333333333333) rectangle (.2,-1.66533453694e-16);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,-0.333333333333) rectangle (0,-1.66533453694e-16);
+\fill [green!50] (0,0.0) rectangle (.2,0.333333333333);
+\fill [pattern=north east lines,preaction={fill,green!50}] (-.5,0.0) rectangle (0,0.333333333333);
+\fill [green!50] (0,0.333333333333) rectangle (.2,0.666666666667);
+\fill [green!50] (-.5,0.333333333333) rectangle (0,0.666666666667);
+\fill [blue!50] (0,-1.33333333333) rectangle (.2,-1.0);
+\fill [blue!50] (-.5,-1.33333333333) rectangle (0,-1.0);
+
+
         \draw (-.5,-2) rectangle (0,2);
-        \draw (0,-2) rectangle (.5,2);
-        \foreach \i in {-1.75,-1.5,...,1.75}{
-            \draw (-.5,\i) -- (.5,\i);
+        \draw (0,-2) rectangle (.2,2);
+        \foreach \i in {-1.667,-1.333,...,2}{
+            \draw (-.5,\i) -- (.2,\i);
         }
+        \node (f) at (-1.7,2.0) {free};
+\draw[thick,>=stealth',->,shorten >=2pt] (f.east) .. controls (-1,2.0) and (-1,-1.5) .. (-.5,-1.50033333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,-1.45) .. controls (1,-1.45) and (1,0.783333333333) .. (.2,0.783333333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,0.883333333333) .. controls (1,0.883333333333) and (1,1.11666666667) .. (.2,1.11666666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,1.21666666667) .. controls (1,1.21666666667) and (1,1.45) .. (.2,1.45);
+\draw [>=stealth',->,shorten >=2pt] (.1,1.55) .. controls (1,1.55) and (1,1.78333333333) .. (.2,1.78333333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,1.88333333333) .. controls (1,1.88333333333) and (1,2.11666666667) .. (.2,2.11666666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,-1.8) .. controls (-1,-1.8) and (-1,-0.834666666667) .. (-.5,-0.834666666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,0.6) .. controls (-1,0.6) and (-1,-1.83366666667) .. (-.5,-1.83366666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,-0.783333333333) .. controls (1,-0.783333333333) and (1,-1.88333333333) .. (.2,-1.88333333333);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,-1.4) .. controls (-1,-1.4) and (-1,-0.501666666667) .. (-.5,-0.501666666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,1.0) .. controls (-1,1.0) and (-1,0.497333333333) .. (-.5,0.497333333333);
+\draw [>=stealth',->,shorten >=2pt] (.1,-0.45) .. controls (1,-0.45) and (1,-0.216666666667) .. (.2,-0.216666666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,-0.116666666667) .. controls (1,-0.116666666667) and (1,0.116666666667) .. (.2,0.116666666667);
+\draw [>=stealth',->,shorten >=2pt] (.1,0.216666666667) .. controls (1,0.216666666667) and (1,0.45) .. (.2,0.45);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,-1.0) .. controls (-1,-1.0) and (-1,-1.16766666667) .. (-.5,-1.16766666667);
+\draw [thick,>=stealth',->,shorten >=2pt] (-1.5,1.4) .. controls (-1,1.4) and (-1,-1.16766666667) .. (-.5,-1.16766666667);
+
+
         \node at (-2.5,-1)[rotate=90]{head};
         \node at (-2.5,1)[rotate=90]{tail};
-        \node (f) at (-1.7,2.5) {free};
         \fill [red!50] (-2,-2) rectangle (-1.5,-1.6);
-        \fill [yellow!50] (-2,-1.6) rectangle (-1.5,-1.2);
+        \fill [green!50] (-2,-1.6) rectangle (-1.5,-1.2);
         \fill [blue!50] (-2,-1.2) rectangle (-1.5,-.8);
-        \fill [green!50] (-2,-.8) rectangle (-1.5,-.4);
+        
+
         \fill [red!50] (-2,.4) rectangle (-1.5,.8);
-        \fill [yellow!50] (-2,.8) rectangle (-1.5,1.2);
+        \fill [green!50] (-2,.8) rectangle (-1.5,1.2);
         \fill [blue!50] (-2,1.2) rectangle (-1.5,1.6);
-        \fill [green!50] (-2,1.6) rectangle (-1.5,2);
-        \draw (-2,-2) rectangle (-1.5, -.4);
-        \draw (-2,2) rectangle (-1.5, .4);
+        
+
+        \draw (-2,-2) rectangle (-1.5, -.8);
+        \draw (-2,.4) rectangle (-1.5, 1.6);
         \foreach \i in {-1.6,-1.2,-.8,.8,1.2,1.6}{
             \draw (-2,\i) -- (-1.5,\i);
         }
-        \foreach[count=\i] \l/\h in {6/6,1/1,8/4,3/0}{
-            \draw [thick,->] (-1.5,-1.8+\i*.4-.4) -- (-.5,\l*.25-1.875);
-            \draw [thick,->] (-1.5,.6+\i*.4-.4) -- (-.5,\h*.25-1.875);
-        }
-        \draw (-.5,-.75) -- (0,-.5);
-        \draw (-.5,-.5) -- (0,-.75);
-        \draw (-.5,-1.25) -- (0,-1);
-        \draw (-.5,-1) -- (0,-1.25);
-        \draw (-.5,.25) -- (0,0);
-        \draw (-.5,0) -- (0,.25);
-        \draw [thick,->] (f.east) -- (-.5,-1.375);
-        \draw [->] (.1,-1.375) -- (.1,-.125);
-        \draw [->] (.2,.125) -- (.2,-.875);
-        \draw [->] (.4,-.625) -- (.4,-1.875);
-        \draw [->] (.4,-.125) -- (.4,.375);
-        \draw [->] (.3,-1.125) -- (.3,-.625);
-        \foreach \i in {.375,.875,...,1.625}{
-            \draw [->] (.1,\i) -- (.1,\i+.25);
-            \draw [->] (.2,\i+.25) -- (.2,\i+.5);
-        }
-        \draw [->] (.3,1.875) -- (.3,2.125);
-
         \end{tikzpicture}
         \caption{Third clock cycle}
         \label{fig:linked3}
@@ -401,22 +425,24 @@ In the Omega multi-port memory design, the control for this network increments e
         \center
         \begin{subfigure}{.32\linewidth}
             \begin{tikzpicture}
-                \draw (0,0) rectangle (2.5,1);
-                \draw (0,.5) -- (2.5,.5);
+                \clip (-.1,-.6) rectangle (2.6,2.6);
+                \draw (0,0) rectangle (2.5,.5);
             \foreach \i in {.5,1,...,2}{
-                \draw (\i,0) -- (\i,1);
+                \draw (\i,0) -- (\i,.5);
             }
             \foreach \i/\j/\k in {0/1/0,1/1/0,2/1/1,3/0/0,4/0/0}{
-                \node at (\i*.5+.25,.75) {\j};
+                %\node at (\i*.5+.25,.75) {\j};
                 \ifthenelse{\k=1}{
-                    \draw (\i*.5,0) -- (\i*.5+.5,.5);
-                    \draw (\i*.5,.5) -- (\i*.5+.5,0);
+                    \fill[pattern=north east lines] (\i*.5,0) rectangle (\i*.5+.5,.5);
                 }{};
             }
-            \node at (1,2) (b) {head};
-            \node at (2,2) (e) {tail};
-            \draw [thick,->] (b) -- (1.25,1);
-            \draw [thick,->] (e) -- (2.25,1);
+            %\draw[pattern=north east lines] (1,2) rectangle (1.5,2.5);
+
+            \node at (1,1.5) (b) {head};
+            \node at (2,1.5) (e) {tail};
+            \draw [thick,->,shorten >=2pt] (b) .. controls +(0,-.5) and +(0,.5) .. (1.25,.5);
+            \draw [thick,->,shorten >=2pt] (e) .. controls +(0,-.5) and +(0,.5) .. (2.25,.5);
+            \draw [thick,->] (1.25,0) -- +(0,-.5);
 
             \end{tikzpicture}
             \caption{Initial example}
@@ -424,22 +450,25 @@ In the Omega multi-port memory design, the control for this network increments e
         \end{subfigure}
         \begin{subfigure}{.32\linewidth}
             \begin{tikzpicture}
-                \draw (0,0) rectangle (2.5,1);
-                \draw (0,.5) -- (2.5,.5);
+                \clip (-.1,-.6) rectangle (2.6,2.6);
+                \draw (0,0) rectangle (2.5,.5);
             \foreach \i in {.5,1,...,2}{
-                \draw (\i,0) -- (\i,1);
+                \draw (\i,0) -- (\i,.5);
             }
             \foreach \i/\j/\k in {0/1/0,1/1/0,2/1/0,3/0/0,4/0/0}{
-                \node at (\i*.5+.25,.75) {\j};
+                %\node at (\i*.5+.25,.75) {\j};
                 \ifthenelse{\k=1}{
-                    \draw (\i*.5,0) -- (\i*.5+.5,.5);
-                    \draw (\i*.5,.5) -- (\i*.5+.5,0);
+                    \fill[pattern=north east lines] (\i*.5,0) rectangle (\i*.5+.5,.5);
                 }{};
             }
-            \node at (1,2) (b) {head};
-            \node at (2,2) (e) {tail};
-            \draw [thick,->] (b) -- (1.75,1);
-            \draw [thick,->] (e) -- (.25,1);
+            \draw[pattern=north east lines] (2,2) rectangle (2.5,2.5);
+            \draw[thick,->,shorten >=2pt] (2.25,2) -- (2.25,.5);
+
+            \node at (1,1.5) (b) [fill=white]{head};
+            \node at (2,1.5) (e) [fill=white]{tail};
+            \draw [thick,->,shorten >=2pt] (b) .. controls +(0,-.5) and +(0,.5) .. (1.75,.5);
+            \draw [thick,->,shorten >=2pt] (e) .. controls +(0,-.5) and +(0,.5) .. (0.25,.5);
+            %\draw [thick,->] (1.25,0) -- +(0,-.5);
 
             \end{tikzpicture}
             \caption{First clock cycle}
@@ -447,22 +476,25 @@ In the Omega multi-port memory design, the control for this network increments e
         \end{subfigure}
         \begin{subfigure}{.32\linewidth}
             \begin{tikzpicture}
-                \draw (0,0) rectangle (2.5,1);
-                \draw (0,.5) -- (2.5,.5);
+                \clip (-.1,-.6) rectangle (2.6,2.6);
+                \draw (0,0) rectangle (2.5,.5);
             \foreach \i in {.5,1,...,2}{
-                \draw (\i,0) -- (\i,1);
+                \draw (\i,0) -- (\i,.5);
             }
-            \foreach \i/\j/\k in {0/1/0,1/1/0,2/1/0,3/0/0,4/1/1}{
-                \node at (\i*.5+.25,.75) {\j};
+            \foreach \i/\j/\k in {0/1/0,1/1/0,2/1/0,3/0/0,4/0/1}{
+                %\node at (\i*.5+.25,.75) {\j};
                 \ifthenelse{\k=1}{
-                    \draw (\i*.5,0) -- (\i*.5+.5,.5);
-                    \draw (\i*.5,.5) -- (\i*.5+.5,0);
+                    \fill[pattern=north east lines] (\i*.5,0) rectangle (\i*.5+.5,.5);
                 }{};
             }
-            \node at (1,2) (b) {head};
-            \node at (2,2) (e) {tail};
-            \draw [thick,->] (b) -- (1.75,1);
-            \draw [thick,->] (e) -- (.75,1);
+            \draw[pattern=north east lines] (1.5,2) rectangle (2,2.5);
+            \draw[thick,->,shorten >=2pt] (1.75,2) -- (1.75,.5);
+
+            \node at (1,1.5) (b) [fill=white]{head};
+            \node at (2,1.5) (e) [fill=white]{tail};
+            \draw [thick,->,shorten >=2pt] (b) .. controls +(0,-.5) and +(0,.5) .. (1.75,.5);
+            \draw [thick,->,shorten >=2pt] (e) .. controls +(0,-.5) and +(0,.5) .. (0.75,.5);
+            %\draw [thick,->] (1.75,0) -- +(0,-.5);
 
             \end{tikzpicture}
             \caption{Second clock cycle}
@@ -470,22 +502,25 @@ In the Omega multi-port memory design, the control for this network increments e
         \end{subfigure}
         \begin{subfigure}{.32\linewidth}
             \begin{tikzpicture}
-                \draw (0,0) rectangle (2.5,1);
-                \draw (0,.5) -- (2.5,.5);
+                \clip (-.1,-.6) rectangle (2.6,2.6);
+                \draw (0,0) rectangle (2.5,.5);
             \foreach \i in {.5,1,...,2}{
-                \draw (\i,0) -- (\i,1);
+                \draw (\i,0) -- (\i,.5);
             }
-            \foreach \i/\j/\k in {0/1/0,1/1/0,2/1/0,3/1/1,4/1/1}{
-                \node at (\i*.5+.25,.75) {\j};
+            \foreach \i/\j/\k in {0/1/0,1/1/0,2/1/0,3/0/1,4/0/1}{
+                %\node at (\i*.5+.25,.75) {\j};
                 \ifthenelse{\k=1}{
-                    \draw (\i*.5,0) -- (\i*.5+.5,.5);
-                    \draw (\i*.5,.5) -- (\i*.5+.5,0);
+                    \fill[pattern=north east lines] (\i*.5,0) rectangle (\i*.5+.5,.5);
                 }{};
             }
-            \node at (1,2) (b) {head};
-            \node at (2,2) (e) {tail};
-            \draw [thick,->] (b) -- (1.75,1);
-            \draw [thick,->] (e) -- (1.25,1);
+            %\draw[pattern=north east lines] (1.5,2) rectangle (2,2.5);
+            %\draw[thick,->,shorten >=2pt] (1.75,2) -- (1.75,.5);
+
+            \node at (1,1.5) (b) [fill=white]{head};
+            \node at (2,1.5) (e) [fill=white]{tail};
+            \draw [thick,->,shorten >=2pt] (b) .. controls +(0,-.5) and +(0,.5) .. (1.75,.5);
+            \draw [thick,->,shorten >=2pt] (e) .. controls +(0,-.5) and +(0,.5) .. (1.25,.5);
+            \draw [thick,->] (1.75,0) -- +(0,-.5);
 
             \end{tikzpicture}
             \caption{Third clock cycle}
@@ -493,22 +528,25 @@ In the Omega multi-port memory design, the control for this network increments e
         \end{subfigure}
         \begin{subfigure}{.32\linewidth}
             \begin{tikzpicture}
-                \draw (0,0) rectangle (2.5,1);
-                \draw (0,.5) -- (2.5,.5);
+                \clip (-.1,-.6) rectangle (2.6,2.6);
+                \draw (0,0) rectangle (2.5,.5);
             \foreach \i in {.5,1,...,2}{
-                \draw (\i,0) -- (\i,1);
+                \draw (\i,0) -- (\i,.5);
             }
-            \foreach \i/\j/\k in {0/1/0,1/1/0,2/1/0,3/1/0,4/1/1}{
-                \node at (\i*.5+.25,.75) {\j};
+            \foreach \i/\j/\k in {0/1/0,1/1/0,2/1/0,3/0/0,4/0/1}{
+                %\node at (\i*.5+.25,.75) {\j};
                 \ifthenelse{\k=1}{
-                    \draw (\i*.5,0) -- (\i*.5+.5,.5);
-                    \draw (\i*.5,.5) -- (\i*.5+.5,0);
+                    \fill[pattern=north east lines] (\i*.5,0) rectangle (\i*.5+.5,.5);
                 }{};
             }
-            \node at (1,2) (b) {head};
-            \node at (2,2) (e) {tail};
-            \draw [thick,->] (b) -- (2.25,1);
-            \draw [thick,->] (e) -- (1.25,1);
+            \draw[pattern=north east lines] (0,1.5) rectangle (.5,2);
+            \draw[thick,->,shorten >=2pt] (0.25,1.5) -- (0.25,.5);
+
+            \node at (1,1.5) (b) [fill=white]{head};
+            \node at (2,1.5) (e) [fill=white]{tail};
+            \draw [thick,->,shorten >=2pt] (b) .. controls +(0,-.5) and +(0,.5) .. (2.25,.5);
+            \draw [thick,->,shorten >=2pt] (e) .. controls +(0,-.5) and +(0,.5) .. (1.25,.5);
+            \draw [thick,->] (2.25,0) -- +(0,-.5);
 
             \end{tikzpicture}
             \caption{Fourth clock cycle}
@@ -516,22 +554,25 @@ In the Omega multi-port memory design, the control for this network increments e
         \end{subfigure}
         \begin{subfigure}{.32\linewidth}
             \begin{tikzpicture}
-                \draw (0,0) rectangle (2.5,1);
-                \draw (0,.5) -- (2.5,.5);
+                \clip (-.1,-.6) rectangle (2.6,2.6);
+                \draw (0,0) rectangle (2.5,.5);
             \foreach \i in {.5,1,...,2}{
-                \draw (\i,0) -- (\i,1);
+                \draw (\i,0) -- (\i,.5);
             }
-            \foreach \i/\j/\k in {0/0/1,1/1/0,2/1/0,3/1/0,4/1/0}{
-                \node at (\i*.5+.25,.75) {\j};
+            \foreach \i/\j/\k in {0/1/1,1/1/0,2/1/0,3/0/0,4/0/0}{
+                %\node at (\i*.5+.25,.75) {\j};
                 \ifthenelse{\k=1}{
-                    \draw (\i*.5,0) -- (\i*.5+.5,.5);
-                    \draw (\i*.5,.5) -- (\i*.5+.5,0);
+                    \fill[pattern=north east lines] (\i*.5,0) rectangle (\i*.5+.5,.5);
                 }{};
             }
-            \node at (1,2) (b) {head};
-            \node at (2,2) (e) {tail};
-            \draw [thick,->] (b) -- (.25,1);
-            \draw [thick,->] (e) -- (1.25,1);
+            %\draw[pattern=north east lines] (0,2) rectangle (.5,2.5);
+            %\draw[thick,->,shorten >=2pt] (0.25,2) -- (0.25,.5);
+
+            \node at (1,1.5) (b) [fill=white]{head};
+            \node at (2,1.5) (e) [fill=white]{tail};
+            \draw [thick,->,shorten >=2pt] (b) .. controls +(0,-.5) and +(0,.5) .. (0.25,.5);
+            \draw [thick,->,shorten >=2pt] (e) .. controls +(0,-.5) and +(0,.5) .. (1.25,.5);
+            %\draw [thick,->] (2.25,0) -- +(0,-.5);
 
             \end{tikzpicture}
             \caption{Fifth clock cycle}

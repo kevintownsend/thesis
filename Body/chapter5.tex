@@ -3,7 +3,7 @@
 
 Although we address this pillar last we view it as the most important. We previously implemented matrix compression in \cite{prelim:townsend}. However, we made the mistake of combining the two types of compression, index and floating point into one scheme. This simplified some aspects of the design. For example, this compression only needed to keep track of one data stream. Combining the two parts also makes sense if the two are correlated. In the extreme case the values in matrix could be calculated from the indices. However, we do not see an easy way to use this for general sparse matrix compression.
 
-This chapter is dedicated to sprase pattern matrix compression, which we call SMC. In the next chapter we disscuss our floating point compression, which we call fzip. This chapter starts with Section~\ref{sec:index_compression_related_work} discussing related work. Then, Section~\ref{sec:index_compression_analysis} discusses the analysis of delta compression. Then, Section~\ref{sec:smc} discusses our implementation. Then, Section~\ref{sec:smc_decoder} discusses the hardware decorder for SMC. Lastly, Section~\ref{sec:smc_discussion} discusses something.
+This chapter is dedicated to sparse pattern matrix compression, which we call SMC. In the next chapter we discuss our floating point compression, which we call fzip. This chapter starts with Section~\ref{sec:index_compression_related_work} discussing related work. Then, Section~\ref{sec:index_compression_analysis} discusses the analysis of delta compression. Then, Section~\ref{sec:smc} discusses our implementation. Then, Section~\ref{sec:smc_decoder} discusses the hardware decoder for SMC. Lastly, Section~\ref{sec:smc_discussion} discusses something.
 
 \section{Related Work}
 \label{sec:index_compression_related_work}
@@ -22,7 +22,7 @@ The method in [\cite{prelim:kourtis}] is similar but targeted for CPUs rather th
 The argument stream can be padded to make sure the data types align properly. The whole propose of this implementation is that nat\"ive data types are used so the CPU can process them faster. The compression results of this implementation is in Table~\ref{tbl:index} column 5.
 
 \subsection{gzip}
-We also choose to use the general compression program gzip in the comparison as well. Table~\ref{tbl:index} shows the compression of gzip on top of the CSR format. gzip does very well, partly because column indicies ofeten repeat.
+We also choose to use the general compression program gzip in the comparison as well. Table~\ref{tbl:index} shows the compression of gzip on top of the CSR format. gzip does very well, partly because column indices often repeat.
 
 
 \begin{table*}
@@ -106,9 +106,9 @@ We approach the problem of how to encode the series of deltas by giving each del
     \item New line code.
 \end{enumerate}
 
-The constant offset codes represent small deltas and decode as the exact value of the delta. The valiable offset codes represent larger deltas and decode as the bit length of the delta ($\textrm{log}_2(\delta)$). The new line codes represent the end of the 512 row section. After a newline code is read the running `major' row index will increment and the running `minor' row index will reset to -1 and all of the running column index will reset to -1.
+The constant offset codes represent small deltas and decode as the exact value of the delta. The variable offset codes represent larger deltas and decode as the bit length of the delta ($\textrm{log}_2(\delta)$). The new line codes represent the end of the 512 row section. After a newline code is read the running `major' row index will increment and the running `minor' row index will reset to -1 and all of the running column index will reset to -1.
 
-Based on the analysis in Table~\ref{tbl:indexDist} we choose to have 32 constant offset codes. Using the deltas we can determine the frquencies of each code. With these frequencies we can create the codes using Huffman encoding [\cite{prelim:huffman}].
+Based on the analysis in Table~\ref{tbl:indexDist} we choose to have 32 constant offset codes. Using the deltas we can determine the frequencies of each code. With these frequencies we can create the codes using Huffman encoding [\cite{prelim:huffman}].
 
 As an example, consider the example matrix back in Chapter~\ref{chp:background} in Equation~\ref{eqn:example}. Using row-major traversal (rather than RCR traversal) the deltas are:\\
 1, 3, 3, \textbackslash n, 5, 3, \textbackslash n, 2, 1, 3, 1, \textbackslash n, 1, 4, \textbackslash n, 3, 1, 3, 1, \textbackslash n, 2, 3, \textbackslash n, 2, 1, 3, 2, \textbackslash n, 3, 1, 1, 1
@@ -121,9 +121,9 @@ Using 2 (rather than 32) constant offsets, the codes and their frequencies are:\
     \item 5-8 : 1
     \item \textbackslash n : 7
 \end{enumerate}
-This results in 5 codes: 2 constant offset codes, 2 variable offsets codes, and 1 newline code. Now these codes are given varible length codes through Huffman encoding.
+This results in 5 codes: 2 constant offset codes, 2 variable offsets codes, and 1 newline code. Now these codes are given variable length codes through Huffman encoding.
 
-Huffman encoding first creates a huffman tree, which then is used to create the codes. The tree is created as follows. First, create a lone node for each code. Second, sort the nodes by frequency. Third, pop the two nodes with the lowest frequency from the list, and make the two nodes children of a new node. Fourth, set the frequency value of this new node to the sum of the frquencies of the children. Fifth, insert the new node back into the sorted list. Then repeat the third through fifth steps until the list only contains one node. \figurename~\ref{fig:huffman_tree} shows the creation of the Huffman tree. The following is the sorted list at each iteration:
+Huffman encoding first creates a Huffman tree, which then is used to create the codes. The tree is created as follows. First, create a lone node for each code. Second, sort the nodes by frequency. Third, pop the two nodes with the lowest frequency from the list, and make the two nodes children of a new node. Fourth, set the frequency value of this new node to the sum of the frequencies of the children. Fifth, insert the new node back into the sorted list. Then repeat the third through fifth steps until the list only contains one node. \figurename~\ref{fig:huffman_tree} shows the creation of the Huffman tree. The following is the sorted list at each iteration:
 \begin{enumerate}
     \item (1 : 10), (3-4 : 9), (\textbackslash n : 7), (2 : 4), (5-8 : 1)
     \item (1 : 10), (3-4 : 9), (\textbackslash n : 7), (a : 5)
@@ -215,7 +215,7 @@ To make decoding easier we set the maximum code length to 9. We do this by artif
 
 \section{The SMC decoder}
 \label{sec:smc_decoder}
-The hardware decoder relies on lookup tables to decode the two streams (see \figurename~\ref{fig:smc_decoder}). First the dictonary is loaded onto a large 512 value lookup table (LUT). This lookup table uses the code length to determine how much to right shift the first shift buffer. The LUT then determines if the second shift buffer is needed (the code is a variable length delta). In that case, the second shift buffer is right shifted and the output is used to create the delta. Then the delta (or newline) is sent to the running row and column index and the current row and column index is outputed from the decoder.
+The hardware decoder relies on lookup tables to decode the two streams (see \figurename~\ref{fig:smc_decoder}). First the dictionary is loaded onto a large 512 value lookup table (LUT). This lookup table uses the code length to determine how much to right shift the first shift buffer. The LUT then determines if the second shift buffer is needed (the code is a variable length delta). In that case, the second shift buffer is right shifted and the output is used to create the delta. Then the delta (or newline) is sent to the running row and column index and the current row and column index is outputted from the decoder.
 \begin{figure}
     \centering
     \begin{tikzpicture}
@@ -256,4 +256,4 @@ We do not have the exact area and performance of this decoder because we only de
 \section{Results}
 \label{sec:smc_discussion}
 
-Table~\ref{tbl:index}  shows the results of SMC compression. As seen, it outperforms the pervious implementations. In addition, we looked at compressing the smc file further with gzip. This achieve a good deal of addition compression. One reason for this additional compression is that it compresses the repeating deltas equal to 1 in the dense sections of the matrix.
+Table~\ref{tbl:index}  shows the results of SMC compression. As seen, it outperforms the previous implementations. In addition, we looked at compressing the smc file further with gzip. This achieve a good deal of addition compression. One reason for this additional compression is that it compresses the repeating deltas equal to 1 in the dense sections of the matrix.
