@@ -1,15 +1,15 @@
 \chapter{MULTIPLY-ACCUMULATOR}
 \label{chp:mac}
-A high throughput SpMV implementation relies on designing a no-stall multiply accumulator (MAC). An inefficient engine will often stall when a matrix and its associated vector value arrives every or nearly every clock cycle. The long latency of floating point addition and row-column-row traversal makes this complicated.
+A high throughput SpMV implementation relies on designing a rarely stalling multiply accumulator (MAC). An inefficient engine will often stall when a matrix and its associated vector value arrives every or nearly every clock cycle. The long latency of floating point addition and row-column-row traversal makes this complicated. This chapter is organized as follows. Section~\ref{sec:mac_related_work} discusses previous approaches to accumulator designs. Section~\ref{sec:intermediator} discusses our MAC, which uses an `Intermediator' to manage intermediate $y$ values. Section~\ref{sec:mac_results} discusses performance and synthesis results of our design.
 
 \section{Related Work}
 \label{sec:mac_related_work}
-We looked at several multiply-accumulator designs before creating our own. We also use floating-point cores from Flopoco, so we are not starting from scratch. There are many different floating-point multiply-accumulators that solve different problems. Most accept one matrix element and one $x$ vector value at a time, however, we also discuss one that does not.
+We looked at several multiply-accumulator designs before creating our own. We also use floating-point cores from Flopoco [\cite{prelim:dedinechin}], so we are not starting from scratch. There are many different floating-point multiply-accumulators that solve different problems. Most accept one matrix element and one $x$ vector value at a time, however, we also discuss one that does not.
 \subsection{Floating Point Adder and Multiplier (Flopoco)}
-Most designs, including ours, use existing double-precision adder and multiplier cores for their multiply accumulator. We use Flopoco and use the features of these cores for analyzing other designs (See Table \ref{tbl:flopoco}) [\cite{prelim:dedinechin,prelim:banescu,prelim:dedinechin2}]. Flopoco uses a slightly different floating point format than the IEEE 754 standard. In addition to the floating-point adder and the floating-point multiplier we used 2 cores for converting to and from IEEE 754 format.
+Most designs, including ours, use existing double-precision adder and multiplier cores for their multiply accumulator. We use Flopoco to build our adder and multiplier [\cite{prelim:banescu,prelim:dedinechin2}]. We use the performance and latency (See Table~\ref{tbl:flopoco}) from these cores for reference in the rest of this section.  Flopoco uses a slightly different floating point format than the IEEE 754 standard. In addition to the floating-point adder and the floating-point multiplier we used 2 cores for converting to and from IEEE 754 format.
 
 \begin{table}
-    \caption{Flopoco Core Information}
+    \caption{Flopoco core information.}
     \label{tbl:flopoco}
     \begin{tabular}{|c|ccccc|}
         \hline
@@ -26,10 +26,13 @@ Most designs, including ours, use existing double-precision adder and multiplier
     \end{tabular}
 \end{table}
 
-\subsection{Binary Tree Accumulator}
-Generally one multiplier multiplicand pair is sent per clock cycle to a multiply-accumulator, however one design streams multiple values at a time [\cite{prelim:sun2}]. Effectively, this MAC can be used to create a large processing element rather than many smaller ones. We have a slightly simplified version in \figurename~\ref{fig:tree_accumulator}. From a high level you can see this hardware computes dot-products. However, because the dot-products are of variable length the design is more complex.
+\subsection{Strided Accumulator}
+One way to accumulate values with an adder that has a latency of $\alpha$ clock cycles is to accumulate $\alpha$ values at a time. This requires values to come in a strided manner. For example, once a value from row 0 enters the adder than $\alpha - 1$ more values from different rows enter the adder before proceeding to the next value in row 0. The traversal in \cite{prelim:fowers}, disscussed in the previous chapter in Section~\ref{sec:traversal_related_work}, follows this rule and makes designing this accumulator fairly straight forward.
 
-\par This binary tree accumulator design uses an IPV (Input Pattern Vector) or bitmap to keep track of the rows. A `1' indicates the element is the last element in the row and a `0' otherwise. Our example MAC accepts 4 pairs of values per clock cycle. To explain this MAC let us use the example matrix from Equaiton~\ref{eqn:example}. The inputs in this case would be as follows:
+\subsection{Binary Tree Accumulator}
+Generally one multiplier multiplicand pair is sent per clock cycle to a multiply-accumulator, however one design streams multiple values at a time [\cite{prelim:sun2}]. Effectively, this MAC can be used to create a large processing element rather than many smaller ones. The basic design is shown in \figurename~\ref{fig:tree_accumulator}. From a high level you can see this hardware computes dot-products. However, because the dot-products are of variable length the design is more complex.
+
+\par This binary tree accumulator design uses an IPV (Input Pattern Vector) or a eol bitmap to keep track of the rows. A `1' indicates the element is the last element in the row and a `0' otherwise. Our example MAC accepts 4 pairs of values per clock cycle. To explain this MAC let us use the example matrix from Equaiton~\ref{eqn:example}. The inputs in this case would be as follows:
 \begin{enumerate}
     \item IPV=0010, data=($A_{11}\times x_1, A_{14}\times x_4, A_{17}\times x_7, A_{25}\times x_5$)
     \item IPV=1000, data=($A_{28}\times x_8, A_{32}\times x_2, A_{33}\times x_3, A_{36}\times x_6$)
@@ -109,96 +112,107 @@ Generally one multiplier multiplicand pair is sent per clock cycle to a multiply
         \draw[->,shorten >=2pt](0,-2) .. controls +(0,-.5) and +(-.5,.2) .. (acc);
 
     \end{tikzpicture}
-    \caption{Binary Tree Accumulator}
+    \caption{The binary tree accumulator.}
     \label{fig:tree_accumulator}
 \end{figure}
 
 \begin{table}
-    \caption{Operation of the binary tree accumulator based on the IPV}
+    \centering
+    \caption{Operation of the binary tree accumulator based on the Input Pattern Vector (IPV).}
     \label{tbl:ipv}
-    \begin{tabular}{|c|c|c|c|c|}
-        \hline
+    \begin{tabular}{m{2cm}cccc}
         IPV & 0010 & 1000 & 1010 & 1001 \\ 
         \hline
-        \shortstack{Level 1\\Switch\\Network} &
-        \shortstack{$\textrm{IN}_0 \rightarrow \textrm{OUT}_0$\\
-        $\textrm{IN}_1 \rightarrow \textrm{OUT}_1$\\
-    $\textrm{IN}_2 \rightarrow \textrm{OUT}_2$\\
-$\textrm{IN}_3 \rightarrow \textrm{OUT}_4$\\
-$0 \rightarrow \textrm{OUT}_3$\\
-$0 \rightarrow \textrm{OUT}_5$} &
-        \shortstack{$\textrm{IN}_0 \rightarrow \textrm{OUT}_0$\\
+        \multirow{6}{*}{\parbox{2cm}{\centering Level 1 Switch Network}} &
+        $\textrm{IN}_0 \rightarrow \textrm{OUT}_0$ &
+        $\textrm{IN}_0 \rightarrow \textrm{OUT}_0$ &
+        $\textrm{IN}_0 \rightarrow \textrm{OUT}_0$ &
+        $\textrm{IN}_0 \rightarrow \textrm{OUT}_0$ \\
+        & $\textrm{IN}_1 \rightarrow \textrm{OUT}_1$ &
+        $0 \rightarrow \textrm{OUT}_1$ &
+        $0 \rightarrow \textrm{OUT}_1$ &
+        $0 \rightarrow \textrm{OUT}_1$ \\
+        & $\textrm{IN}_2 \rightarrow \textrm{OUT}_2$ &
+        $\textrm{IN}_1 \rightarrow \textrm{OUT}_2$ &
+        $\textrm{IN}_1 \rightarrow \textrm{OUT}_2$ &
         $\textrm{IN}_1 \rightarrow \textrm{OUT}_2$\\
+        & $0 \rightarrow \textrm{OUT}_3$ &
+        $\textrm{IN}_2 \rightarrow \textrm{OUT}_3$ &
+        $\textrm{IN}_2 \rightarrow \textrm{OUT}_3$ &
         $\textrm{IN}_2 \rightarrow \textrm{OUT}_3$\\
-    $\textrm{IN}_3 \rightarrow \textrm{OUT}_4$\\
-$0 \rightarrow \textrm{OUT}_1$\\
-$0 \rightarrow \textrm{OUT}_5$} &
-\shortstack{$\textrm{IN}_0 \rightarrow \textrm{OUT}_0$\\
-$\textrm{IN}_1 \rightarrow \textrm{OUT}_2$\\
-$\textrm{IN}_2 \rightarrow \textrm{OUT}_3$\\
-$\textrm{IN}_3 \rightarrow \textrm{OUT}_4$\\
-$0 \rightarrow \textrm{OUT}_3$\\
-$0 \rightarrow \textrm{OUT}_5$} &
-\shortstack{$\textrm{IN}_0 \rightarrow \textrm{OUT}_0$\\
-$\textrm{IN}_1 \rightarrow \textrm{OUT}_2$\\
-$\textrm{IN}_2 \rightarrow \textrm{OUT}_3$\\
-$\textrm{IN}_3 \rightarrow \textrm{OUT}_4$\\
-$0 \rightarrow \textrm{OUT}_0$\\
-$0 \rightarrow \textrm{OUT}_5$}\\
+        & $\textrm{IN}_3 \rightarrow \textrm{OUT}_4$ &
+        $\textrm{IN}_3 \rightarrow \textrm{OUT}_4$ &
+        $\textrm{IN}_3 \rightarrow \textrm{OUT}_4$ &
+        $\textrm{IN}_3 \rightarrow \textrm{OUT}_4$\\
+        & $\times \rightarrow \textrm{OUT}_5$ &
+        $\times \rightarrow \textrm{OUT}_5$ &
+        $\times \rightarrow \textrm{OUT}_5$ &
+        $\times \rightarrow \textrm{OUT}_5$\\
         \hline
-        \shortstack{Level 2\\Switch\\Network} &
-\shortstack{$\textrm{IN}_0 \rightarrow \textrm{OUT}_0$\\
-$\textrm{IN}_1 \rightarrow \textrm{OUT}_1$\\
-$\textrm{IN}_2 \rightarrow \textrm{OUT}_2$\\
-$\textrm{IN}_3 \rightarrow \textrm{OUT}_3$\\
-$0 \rightarrow \textrm{OUT}_4$} &
-\shortstack{$\textrm{IN}_0 \rightarrow \textrm{OUT}_2$\\
-$\textrm{IN}_1 \rightarrow \textrm{OUT}_0$\\
-$\textrm{IN}_2 \rightarrow \textrm{OUT}_1$\\
-$\textrm{IN}_3 \rightarrow \textrm{OUT}_3$\\
-$0 \rightarrow \textrm{OUT}_4$} &
-\shortstack{$\textrm{IN}_0 \rightarrow \textrm{OUT}_0$\\
-$\textrm{IN}_1 \rightarrow \textrm{OUT}_2$\\
-$\textrm{IN}_2 \rightarrow \textrm{OUT}_3$\\
-$\textrm{IN}_3 \rightarrow \textrm{OUT}_4$\\
-$0 \rightarrow \textrm{OUT}_1$} &
-\shortstack{$\textrm{IN}_0 \rightarrow \textrm{OUT}_2$\\
-$\textrm{IN}_1 \rightarrow \textrm{OUT}_0$\\
-$\textrm{IN}_2 \rightarrow \textrm{OUT}_1$\\
-$\textrm{IN}_3 \rightarrow \textrm{OUT}_3$\\
-$0 \rightarrow \textrm{OUT}_4$}\\
 
+        \multirow{5}{*}{\parbox{2cm}{\centering Level 2 Switch Network}} &
+        $\textrm{IN}_0 \rightarrow \textrm{OUT}_0$ &
+        $\textrm{IN}_1 \rightarrow \textrm{OUT}_0$ &
+        $\textrm{IN}_0 \rightarrow \textrm{OUT}_0$ &
+        $\textrm{IN}_1 \rightarrow \textrm{OUT}_0$\\
+        & $\textrm{IN}_1 \rightarrow \textrm{OUT}_1$ &
+        $\textrm{IN}_2 \rightarrow \textrm{OUT}_1$ &
+        $0 \rightarrow \textrm{OUT}_1$ &
+        $\textrm{IN}_2 \rightarrow \textrm{OUT}_1$\\
+        & $\textrm{IN}_2 \rightarrow \textrm{OUT}_2$ &
+        $\textrm{IN}_0 \rightarrow \textrm{OUT}_2$ &
+        $\textrm{IN}_1 \rightarrow \textrm{OUT}_2$ &
+        $\textrm{IN}_0 \rightarrow \textrm{OUT}_2$\\
+        & $\times \rightarrow \textrm{OUT}_3$ &
+        $\times \rightarrow \textrm{OUT}_3$ &
+        $\textrm{IN}_2 \rightarrow \textrm{OUT}_3$ &
+        $\times \rightarrow \textrm{OUT}_3$\\
+        & $\times \rightarrow \textrm{OUT}_4$ &
+        $\times \rightarrow \textrm{OUT}_4$ &
+        $\times \rightarrow \textrm{OUT}_4$ &
+        $\times \rightarrow \textrm{OUT}_4$\\
         \hline
-        \shortstack{Level 3\\Switch\\Network} &
-            \shortstack{$\textrm{IN}_0 \rightarrow \textrm{OUT}_1$\\
-$\textrm{IN}_1 \rightarrow \textrm{OUT}_0$\\
-$\textrm{IN}_2 \rightarrow \textrm{OUT}_2$\\
-$\textrm{IN}_3 \rightarrow \textrm{OUT}_3$\\
-$0 \rightarrow \textrm{OUT}_4$} &
-\shortstack{$\textrm{IN}_0 \rightarrow \textrm{OUT}_0$\\
-$\textrm{IN}_1 \rightarrow \textrm{OUT}_1$\\
-$\textrm{IN}_2 \rightarrow \textrm{OUT}_2$\\
-$\textrm{IN}_3 \rightarrow \textrm{OUT}_3$\\
-$0 \rightarrow \textrm{OUT}_4$} &
-\shortstack{$\textrm{IN}_0 \rightarrow \textrm{OUT}_1$\\
-$\textrm{IN}_1 \rightarrow \textrm{OUT}_2$\\
-$\textrm{IN}_2 \rightarrow \textrm{OUT}_0$\\
-$\textrm{IN}_3 \rightarrow \textrm{OUT}_3$\\
-$0 \rightarrow \textrm{OUT}_4$} &
-\shortstack{$\textrm{IN}_0 \rightarrow \textrm{OUT}_2$\\
-$\textrm{IN}_1 \rightarrow \textrm{OUT}_1$\\
-$\textrm{IN}_2 \rightarrow \textrm{OUT}_0$\\
-$\textrm{IN}_3 \rightarrow \textrm{OUT}_3$\\
-$0 \rightarrow \textrm{OUT}_4$}\\
+
+        \multirow{5}{*}{\parbox{2cm}{\centering Level 3 Switch Network}} &
+        $\textrm{IN}_1 \rightarrow \textrm{OUT}_0$ &
+        $\textrm{IN}_0 \rightarrow \textrm{OUT}_0$ &
+        $\textrm{IN}_2 \rightarrow \textrm{OUT}_0$ &
+        $0 \rightarrow \textrm{OUT}_0$\\
+        & $\textrm{IN}_0 \rightarrow \textrm{OUT}_1$ &
+        $\textrm{IN}_1 \rightarrow \textrm{OUT}_1$ &
+        $\textrm{IN}_0 \rightarrow \textrm{OUT}_1$ &
+        $\textrm{IN}_1 \rightarrow \textrm{OUT}_1$\\
+        & $\times \rightarrow \textrm{OUT}_2$ &
+        $\times \rightarrow \textrm{OUT}_2$ &
+        $\textrm{IN}_1 \rightarrow \textrm{OUT}_2$ &
+        $\textrm{IN}_0 \rightarrow \textrm{OUT}_2$\\
+        & $\times \rightarrow \textrm{OUT}_3$ &
+        $\times \rightarrow \textrm{OUT}_3$ &
+        $\times \rightarrow \textrm{OUT}_3$ &
+        $\times \rightarrow \textrm{OUT}_3$\\
+        & $\times \rightarrow \textrm{OUT}_4$ &
+        $\times \rightarrow \textrm{OUT}_4$ &
+        $\times \rightarrow \textrm{OUT}_4$ &
+        $\times \rightarrow \textrm{OUT}_4$\\
 
         \hline
         valid & 1000 & 1000 & 1100 & 1100 \\ 
         \hline
     \end{tabular}
 \end{table}
+
+The IPV controls 3 things: the routing in the switch networks, how the accumulator operates and how many outputs are valid. Table~\ref{tbl:ipv} shows one possible configuration of the IPVs for the cases that appear in the example.
+
 You may notice that this computation does the additions out of order. For an example of out of order addition, when computing $1+2+3+4$ the MAC does $(1+2)+(3+4)$. This removes the data dependency of adding $1$ and $2$ before processing $3$. CPUs and GPUs (in general) compute floating point addition in order (eg. $\left((1+2)+3\right)+4$). This means results may differ slightly, because changing the order of floating point addition can change the result [\cite{prelim:goldberg}].
 
-%\subsection{Log Sum Accumulator}
+The accumulator has 2 inputs. The right input is for the sum the repesents the first row of the current set that may be a coninuation of the last row in the previous set. The left input is for storing the part of the dot product that continues onto the next input set. In the case that no row end in the current set (IPV=0000) then the value goes into the right input of the accumulator.
+
+\subsection{The Log Sum Accumulator}
+One accumulator that would work for this design is a log sum accumulator [\cite{prelim:sun1}]. To allow this accumulator to be used in the previous accumulator, we have two inputs into this accumulator.
+
+This design is one of the simpliest accumulators. First, one floating point adder loops back on itself to accumulating new values with the adders output. Second, once the last value arrives the 14 or fewer values in the adder are sent through a series of adders. Each adder in the series reduces the number of values in the set by half. So 4 adders will can reduce up to 16 values, which is more than the 14 possible, down to 1 value.
+
+The disadvantage of this design is that it uses 5 floating point adders, when on average less than 1 addition occurs each clock cycle. This means this design uses at least 6,000 LUTs and 5,700 registers. However, more efficent, but more complex designs exist.
 \begin{figure}
     \centering
     \begin{tikzpicture}[scale=3]
@@ -207,52 +221,53 @@ You may notice that this computation does the additions out of order. For an exa
         \node(c) at (2,0) [draw,minimum width=1.5cm, minimum height=1cm]{Adder};
         \node(d) at (3,0) [draw,minimum width=1.5cm, minimum height=1cm]{Adder};
         \node(e) at (4,0) [draw,minimum width=1.5cm, minimum height=1cm]{Adder};
-        \draw[->] (-.5,.1) -- (a.west |- -.5,.1);
+        \draw[->,shorten >=2pt] (-.5,.1) -- (a.west |- -.5,.1);
         \node(r0) at (-.4,-.1) [draw, inner sep=0pt, outer sep=0pt,minimum height=.2cm] {};
-        \draw[->] (-.5,-.1) -- (r0);
-        \draw[->] (r0) -- (a.west |- -.5,-.1);
+        \draw[->,shorten >=2pt] (-.5,-.1) -- (r0);
+        \draw[->,shorten >=2pt] (r0) -- (a.west |- -.5,-.1);
         \draw[] (a.east) -- (.6,0);
-        \draw[->] (.4,0) -- (.4,-.3) -- (-.3,-.3) -- (-.3,-.1);
-        \draw[->] (.6,0) -- (.6,.1) -- (b.west |- .6,.1);
+        \draw[] (.4,0) -- (.4,-.3) -- (-.3,-.3) -- (-.3,-.1);
+        \draw[->,shorten >=2pt] (.6,0) -- (.6,.1) -- (b.west |- .6,.1);
         \node(r1) at (0.6,-.1) [draw, inner sep=0pt, outer sep=0pt,minimum height=.2cm] {};
         \node(r2) at (1.6,-.1) [draw, inner sep=0pt, outer sep=0pt,minimum height=.2cm] {};
         \node(r3) at (2.6,-.1) [draw, inner sep=0pt, outer sep=0pt,minimum height=.2cm] {};
         \node(r4) at (3.6,-.1) [draw, inner sep=0pt, outer sep=0pt,minimum height=.2cm] {};
-        \draw[->] (.6,0) -- (r1);
-        \draw[->] (r1) -- (b.west |- r1);
+        \draw[->,shorten >=2pt] (.6,0) -- (r1);
+        \draw[->,shorten >=2pt] (r1) -- (b.west |- r1);
 
         \draw[] (b) -- (1.6,0);
-        \draw[->] (1.6,0) -- (1.6,.1) -- (c.west |- .6,.1);
-        \draw[->] (1.6,0) -- (r2);
-        \draw[->] (r2) -- (c.west |- r2);
+        \draw[->,shorten >=2pt] (1.6,0) -- (1.6,.1) -- (c.west |- .6,.1);
+        \draw[->,shorten >=2pt] (1.6,0) -- (r2);
+        \draw[->,shorten >=2pt] (r2) -- (c.west |- r2);
 
         \draw[] (c) -- (2.6,0);
-        \draw[->] (2.6,0) -- (2.6,.1) -- (d.west |- .6,.1);
-        \draw[->] (2.6,0) -- (r3);
-        \draw[->] (r3) -- (d.west |- r3);
+        \draw[->,shorten >=2pt] (2.6,0) -- (2.6,.1) -- (d.west |- .6,.1);
+        \draw[->,shorten >=2pt] (2.6,0) -- (r3);
+        \draw[->,shorten >=2pt] (r3) -- (d.west |- r3);
 
         \draw[] (d) -- (3.6,0);
-        \draw[->] (3.6,0) -- (3.6,.1) -- (e.west |- .6,.1);
-        \draw[->] (3.6,0) -- (r4);
-        \draw[->] (r4) -- (e.west |- r4);
+        \draw[->,shorten >=2pt] (3.6,0) -- (3.6,.1) -- (e.west |- .6,.1);
+        \draw[->,shorten >=2pt] (3.6,0) -- (r4);
+        \draw[->,shorten >=2pt] (r4) -- (e.west |- r4);
+        \draw[->,shorten >=2pt] (e) -- (4.5,0);
 
         \draw[dashed] (.5,.5) -- (.5,-.5);
         \node at (0,.5){Loop back stage};
         \node at (2.5,.5){Log Sum Stages};
     \end{tikzpicture}
-    \caption{Log Sum Accumulator}
+    \caption{The log sum accumulator.}
 \end{figure}
 
 \subsection{Single Adder Accumulator}
-A multiply-accumulator with one multiplier should only need one adder to do all the accumulation. You may have noticed that the adders get progressively underutilized in the log-sum accumulator. The difficulty is how to create an algorithm to achieve this. It is clear that buffering has to occur to achieve this. If the output needs to be in order than the buffering needs to be at least $O(a\textrm{log}(a))$ to accomadate the case where one row has several valuse and fills the adder pipeline and the following rows have only 1 value. If the output can be out of order (meaning the output of the short rows that get accumulated quickly can go to the output before the long rows before it) than it seems like $O(a)$ is the lower limit of the required buffering.
+A multiply-accumulator with one multiplier should only need one adder to do all the accumulation. The difficulty is how to create an algorithm to achieve this. It is clear that buffering has to occur to achieve this. If the output needs to be in order than the buffering needs to be at least $O(\alpha\textrm{log}\alpha)$ to accomadate the case where one row has several valuse and fills the adder pipeline and the following rows have only 1 value. If the output can be out of order (meaning the output of the short rows that get accumulated quickly can go to the output before the long rows before it) than $O(\alpha)$ buffering may be possible.
 
-Other work has achieved accumulators with $O(1)$ adders. \cite{prelim:zhuo} came up with 2 accumulators that use 2 adders and 1 that uses a single adder. However, the single adder solution had restrictions. In addition to only allowing row-major traversal it had a maximum row length of $a$ (the depth of the adder pipeline). This design also required $O(a^2)$ buffer space. The accumulator has two buffers. While one buffer is having it's values accumulated the other is recieving new values. The adder takes in two values from the buffer in the accumulation state and then jumps $a$ addresses to add two other values that belong to a different row. Table~\ref{tbl:single_adder} shows the schedualing of accumulating the products from the example in Equation~\ref{eqn:example}. For simplification we set $\alpha = 4$ instead of $\alpha = 14$.
+Other work has achieved accumulators with only 1 or 2 adders. \cite{prelim:zhuo} came up with 2 accumulators that use 2 adders and 1 that uses a single adder. However, the single adder solution had restrictions. In addition to only allowing row-major traversal it had a maximum row length of $\alpha$ (the depth of the adder pipeline). This design also required $O(\alpha^2)$ buffer space. This accumulator has two buffers. While one buffer is having its values accumulated the other is receiving new values. The adder takes in two values from the buffer in the accumulation state and then jumps $\alpha$ addresses to add two other values that belong to a different row. Table~\ref{tbl:single_adder} shows the schedualing of accumulating the products from the example in Equation~\ref{eqn:example} back in Chapter~\ref{chp:background}. For simplification we set $\alpha = 4$ instead of $\alpha = 14$.
 
-Some may notice a hazard occurs if two value in the fourth column of the buffer belong to the same row of the matrix. This is what prevents this accumulator from being able to accumulate rows greater than $\alpha$. To accomadate this case the accumulator could have an additional adder or stall the accumulator to allow time for accumulating the long rows.
+Some may notice a hazard occurs if two value in the fourth column of the buffer belong to the same row of the matrix. This is what prevents this accumulator from being able to accumulate rows greater than $\alpha$. To accomadate this case the accumulator could have an additional adder or stall the accumulator to allow time for accumulating the longer rows.
 
 \begin{sidewaystable}
     \centering
-    \caption{A single adder accumulator}
+    \caption{Operation of a single adder accumulator.}
     \label{tbl:single_adder}
     \begin{tabular}{|c||c|c|c|c||c||c|c|c|c|}
         \hline
@@ -308,22 +323,50 @@ Some may notice a hazard occurs if two value in the fourth column of the buffer 
     \end{tabular}
 \end{sidewaystable}
 
-\subsection{Using a single cycle Accumulation loop}
-Another solution to this problem is to accumulate in one clock cycle. This is the approach in [\cite{prelim:bachir}]. The idea is to split the accumulation into 3 phases: The extend mantissa and reduce exponent phase, the accumulation loop phase, and the normalize phase. In the first phase the floating point format is converted into a 5-bit exponent and a 52+64=116-bit 2s complement mantissa. In the second phase the incomming value is added to the stored value. In the third phase, the stored value is converted back into IEEE-754 format.
+\subsection{Accumulator Using a Single Cycle Accumulation Loop}
+Another solution to this problem is to accumulate in one clock cycle. This is the approach in [\cite{prelim:bachir}]. The idea is to split the accumulation into 3 phases: The extend mantissa and reduce exponent phase, the accumulation loop phase, and the normalize phase (See Figure~\ref{fig:single_cycle_accumulator}). In the first phase the floating point format is converted into a 5-bit exponent and a 120-bit 2s complement mantissa. In the second phase the incomming value is added to the stored value. In the third phase, the stored value is converted back into IEEE-754 format.
 
-The accumulation phase is more complex than a simple 2s complement adder, because there is an exponent. The difference in the exponents determines what operation the accumulator does. If the incoming exponent $e_i$ is more than 2 greater than the stored exponent $e_s$ than the stored value is thrown out because it is too small and the incomming value replaces the stored value. The other cases are in Table~\ref{tbl:accumulator_ops}.
+Values come out of the first phase in the following format: $m_i\times 64^{e_i}$. One way to look at this is converting from base-2 scientific notation to base-64 scientific notation. The accumulation phase is more complex than a simple 2s complement adder, because of the exponent. The difference in the exponents determines what operation the accumulator does. If the incoming exponent ($e_i$) is more than 1 greater than the stored exponent ($e_s$) than the stored value is thrown out because it is too small and the incomming value replaces the stored value. The other cases are in Table~\ref{tbl:accumulator_ops}.
+
+There is a hazard of overflowing or underflow that must be taken into account. By monitoring when there is a risk of overflowing (the first 2 bits of the stored matissa are different) or unflowing the (first 66 bits are the same) then the result needs to be shifted right or left 64 bits to avoid the hazard.
+
+As you may be noticing even this method is hampering the max frequency. Phase two needs a leading 0/1 detector to determine if $m_s$ is at risk of underflowing or overflowing. simultaniously $e_s - e_i$ is being calculated. This then determines the addition to occur. alternatively, all possible additions can occur first and then the correct value is muxed to the input of the $m_s$ register. Using a Xilinx Virtex-5 the work in \cite{prelim:bachir} achieved a frequency of 134Mhz to 247Mhz depending on the design tradoffs they used.
+
+\begin{figure}
+    \begin{tikzpicture}[scale=.9]
+        \node(p1) at (0,0)[draw,minimum width=2cm, minimum height=2cm]{\shortstack{Phase one:\\Extend mantissa\\ and reduce exponent}};
+        \node(p2) at (5,0)[draw,minimum width=2cm, minimum height=2cm]{\shortstack{Phase two:\\Accumulation loop}};
+        \node(p3) at (10,0)[draw,minimum width=2cm, minimum height=2cm]{\shortstack{Phase three:\\Normalization}};
+        \node(eol) at (-3,.9) {eol};
+        \node(fin) at (-3,0) [rotate=90]{\shortstack{IEEE\\float}};
+        \node(fout) at (13,0) [rotate=90]{\shortstack{IEEE\\float}};
+        \draw[->,shorten >=2pt] (fin) -- (p1);
+        \draw[->,shorten >=2pt] (eol) -- (p2.west |- eol);
+        \draw[->,shorten >=2pt] (p1.east |- 0,-.8) -- (p2.west |- 0,-.8) node [midway,anchor=south]{$m_i$};
+        \draw[->,shorten >=2pt] (p1.east |- 0,0) -- (p2.west |- 0,0) node [midway,anchor=south]{$e_i$};
+        \draw[->,shorten >=2pt] (p3) -- (fout);
+        \draw[->,shorten >=2pt] (p2.east |- 0,-.8) -- (p3.west |- 0,-.8) node [midway,anchor=south]{$m_s$};
+        \draw[->,shorten >=2pt] (p2.east |- 0,0) -- (p3.west |- 0,0) node [midway,anchor=south]{$e_s$};
+
+    \end{tikzpicture}
+    \caption[The in-order accumulator.]{This shows the basic design of an accumualtor with the goal of minimizing the critical loop path so that values can be accumulated in order.}
+    \label{fig:single_cycle_accumulator}
+\end{figure}
 
 \begin{table}
-    \caption{Based on the difference of the incomming exponent $e_i$ and the stored exponent $e_s$ the accumulator does a different operation to add the two values together}
+    \caption[How the stored value is updated in a in-order accumulator based on the stored value and incomming value.]{Based on the difference of the incomming exponent $e_i$ and the stored exponent $e_s$ the accumulator does a different operation to add the two values together}
     \label{tbl:accumulator_ops}
-    \begin{tabular}{|c|c|}
+    \begin{tabular}{c|cc|cc|cc}
+        & \multicolumn{2}{c|}{underflow} & \multicolumn{2}{c|}{overflow} & \multicolumn{2}{c}{other} \\
+        $e_s - e_i$ & $e_s\Leftarrow$ & $m_s\Leftarrow$ & $e_s\Leftarrow$ & $m_s\Leftarrow$ & $e_s\Leftarrow$ & $m_s\Leftarrow$ \\
         \hline
-        $e_s - e_i$ & $e_i\Leftarrow$ \\
-        \hline
+        $>1$ & $e_s - 1$ & $shl(m_s)$ & $e_s + 1$ & $shr(m_s)$ & $e_s$ & $m_s$ \\
+        $1$ & $e_s - 1$ & $shl(m_s) + m_i$ & $e_s + 1$ & $shr(m_s)$ & $e_s$ & $m_s + shr(m_i)$ \\
+        $0$ & $e_s$ & $m_s + m_i$ & $e_s + 1$ & $shr(m_s) + shr(m_i)$ & $e_s$ & $m_s + m_i$ \\
+        $-1$ & $e_i$ & $m_i$ & $e_i$ & $m_i + shr(m_s)$ & $e_i$ & $m_i + shr(m_s)$\\
+        $<-1$ & $e_i$ & $m_i$ & $e_i$ & $m_i$ & $e_i$ & $m_i$ \\
     \end{tabular}
 \end{table}
-
-As you may guess this is still a lot of logic for one clock cycle and as a result this limit the maximum frequency.
 
 \section{Multiply-accumulator with an Intermediator}
 \label{sec:intermediator}
@@ -335,46 +378,55 @@ The problem with all these designs is that they require row-major traversal. Thi
     \item The MAC can stall, but not stall often enough to significantly effect throughput.
 
 \end{enumerate}
-To achieve this we created a MAC that uses one multilier and one adder and one Intermediator block (see \figurename~\ref{fig:mac}). This Intermediator stores up to one intermediate $y$ value for each row in a dual port RAM. This RAM is central to the design of the Intermediator.
+To achieve this we created a MAC that uses one multilier and one adder and one Intermediator block (See \figurename~\ref{fig:mac}). This Intermediator stores up to one intermediate $y$ value for each row in a dual port RAM. This RAM is central to the design of the Intermediator.
 
-\par In $R^3$ [\cite{prelim:townsend}] we introduced the Intermediator but it was only capable of storing 32 intermediate $y$ vector values (see figure \ref{fig:mac}). In this design, we expand this to 1024 (the minimum depth of one dual port RAM block in most Xilinx, Altera and Lattice FPGAs). Both Intermediator designs allow the matrix to be traversed in a loosely row major traversal and the MAC still works correctly. The step from 32 to 1024 intermediate values allows more freedom in the traversal. Earlier in Chapter \ref{chp:traversal} we discussed traversals that abide by this rule and allow for easy reuse of $x$ vector values.
+\par In our previosu work, $R^3$ [\cite{prelim:townsend}], we introduced the Intermediator but it was only capable of storing 32 intermediate $y$ vector values. In this design, we expand this to 1024 (the minimum depth of one dual port RAM block in most Xilinx, Altera and Lattice FPGAs). Both Intermediator designs allow the matrix to be traversed in a loosely row major traversal and the MAC still behaves correctly. The step from 32 to 1024 intermediate values allows more freedom in the traversal. Earlier in Chapter \ref{chp:traversal}, we discussed traversals that abide by this rule and allow for easy reuse of $x$ vector values.
 
 
 \begin{figure}
     \centering
-\begin{tikzpicture}[scale=1]
+\begin{tikzpicture}[scale=1.2]
 \clip (-5,-2.5) rectangle (5,2.5);
-\node at (0,0) [draw, rectangle, minimum height=4cm, minimum width=8cm, label={[label distance=-.6cm,xshift=-2cm]90:Multiply-Accumulator}](acc){};
-\node at (acc) [draw, rectangle, xshift=3cm, yshift=0cm, minimum height=1cm, minimum width=2cm](add){Adder};
-\node at (acc) [draw, rectangle, xshift=.3cm, yshift=0cm, minimum height=1cm, minimum width=0](int){\shortstack{Intermediator}};
-\node at (acc) [draw, rectangle, xshift=-3cm, yshift=0cm, minimum height=1cm, minimum width=2cm](mult){\shortstack{Multiplier}};
+%\node at (0,0) [draw, rectangle, minimum height=4cm, minimum width=8cm, label={[label distance=-.6cm,xshift=-2cm]90:Multiply-Accumulator}](acc){};
+\node at (-4,2)[anchor=north west]{Multiply-Accumulator};
+\draw (-4,-2) rectangle (4,2);
+%\node at (acc) [draw, rectangle, xshift=3cm, yshift=0cm, minimum height=1cm, minimum width=2cm](add){Adder};
+\draw (-4,-.5) rectangle (-2,.5);
+\node at (-3,0) {Multiplier};
 
-\path [draw, thick, >=stealth',->] (-5,.3) --node[ fill=white, inner sep=1pt]{val} (-4,.3) ;
-\path [draw, thick, >=stealth',->] (-5,0) --node[ fill=white, inner sep=1pt]{val} (-4,0) ;
-\path [draw, thick, >=stealth',->] (-5,-.3) --node[ fill=white, inner sep=1pt]{row} (-4,-.3);
+\draw (-1,-.5) rectangle (1.2,.5);
+\node at (.1,0) {Intermediator};
+\draw (2,-.5) rectangle (4,.5);
+\node at (3,0) {Adder};
+%\node at (acc) [draw, rectangle, xshift=.3cm, yshift=0cm, minimum height=1cm, minimum width=0](int){\shortstack{Intermediator}};
+%\node at (acc) [draw, rectangle, xshift=-3cm, yshift=0cm, minimum height=1cm, minimum width=2cm](mult){\shortstack{Multiplier}};
 
-\path [draw, thick, >=stealth',->] (-2,0) --node[ fill=white, inner sep=1pt]{val} (-1,0);
-\path [draw, thick, >=stealth',->] (-2,-.3) --node[ fill=white, inner sep=1pt]{row} (-1,-.3) ;
+\path [draw, thick, >=stealth',->, shorten >=2pt] (-5,.3) --node[ fill=white, inner sep=1pt]{val} (-4,.3) ;
+\path [draw, thick, >=stealth',->, shorten >=2pt] (-5,0) --node[ fill=white, inner sep=1pt]{val} (-4,0) ;
+\path [draw, thick, >=stealth',->, shorten >=2pt] (-5,-.3) --node[ fill=white, inner sep=1pt]{row} (-4,-.3);
 
-\path [draw, thick, >=stealth',->] (.4,.5)  arc(160:20:1.2);
+\path [draw, thick, >=stealth',->, shorten >=2pt] (-2,0) --node[ fill=white, inner sep=1pt]{val} (-1,0);
+\path [draw, thick, >=stealth',->, shorten >=2pt] (-2,-.3) --node[ fill=white, inner sep=1pt]{row} (-1,-.3) ;
+
+\path [draw, thick, >=stealth',->, shorten >=2pt] (.4,.5)  arc(160:20:1.2);
 \node at (1.5,1.2)[fill=white, inner sep=1pt]{row};
 
-\path [draw, thick, >=stealth',->] (.1,.5)  arc(163:17:1.5);
+\path [draw, thick, >=stealth',->, shorten >=2pt] (.1,.5)  arc(163:17:1.5);
 \node at (1.5,1.5)[fill=white, inner sep=1pt]{val};
 
-\path [draw, thick, >=stealth',->] (-.2,.5)  arc(166:14:1.8);
+\path [draw, thick, >=stealth',->, shorten >=2pt] (-.2,.5)  arc(166:14:1.8);
 \node at (1.5,1.8)[fill=white, inner sep=1pt]{val};
 
-\path [draw, thick, >=stealth',->] (2.6,-.5)  arc(-20:-160:1.2);
+\path [draw, thick, >=stealth',->, shorten >=2pt] (2.6,-.5)  arc(-20:-160:1.2);
 \node at (1.5,-1.2)[fill=white, inner sep=1pt]{row};
 
-\path [draw, thick, >=stealth',->] (2.9,-.5)  arc(-17:-163:1.5);
+\path [draw, thick, >=stealth',->, shorten >=2pt] (2.9,-.5)  arc(-17:-163:1.5);
 \node at (1.5,-1.5)[fill=white, inner sep=1pt]{val};
 
-\path [draw, thick, >=stealth',->] (-.5,-.5) --node[sloped, fill=white, inner sep=1pt]{val} (-.5,-2.5);
+\path [draw, thick, >=stealth',->, shorten >=2pt] (-.5,-.5) --node[sloped, fill=white, inner sep=1pt]{val} (-.5,-2.5);
 \end{tikzpicture} %
 
-\caption[Multiply-accumulator]{The no-stall multiply-accumulator block handles multiple intermediate values at a time. This allows multiple intermediate values in the adder pipeline.}
+\caption[The multiply-accumulator with an Intermediator.]{The multiply-accumulator block handles multiple intermediate $y$ values at a time. Every clock cycle, the Intermediator block sends 2 values that belong to the same row to the adder, while simultaniously it receives 1 value from the adder and 1 from the multiplier, which my belong to different rows.}
 \label{fig:mac}
 \end{figure}
 \subsection{Memory and States}
@@ -701,15 +753,13 @@ To help explain, consider a simpler case where the depth of the intermediator is
 \end{subfigure}
 \end{multicols}
 
-\caption[Intermediator]{This shows a simple example of the Intermediator running for 9 clock cycles. For demonstration, the size of the RAM is 8 instead of 1024.}
+\caption[The Intermediator.]{This shows a simple example of the Intermediator running for 9 clock cycles. For demonstration, the size of the RAM is 8 instead of 1024.}
 \label{intermediatorEx}
 \end{figure*}
 \subsection{Stalls}
 There are three hazards to consider when designing this MAC. First, if the intermediator-to-adder fifo is at risk of overflowing. Second, if the red window advances before the other half of the memory is entirely in the white (blank) state. Third, if the fading state does not last long enough for all the values to get accumulated.
 
-For the first case, the intermediator-to-adder FIFO would be at risk of overflowing when case 6 (both inputs coorespond to full slots in the intermediator) occurs very often. However, there is no way for the intermediator-to-adder FIFO will ever get more than 8.
-
-To explain, let us look at the worst case. TODO: finish.
+For the first case, the intermediator-to-adder FIFO would be at risk of overflowing when case 6 (both inputs coorespond to full slots in the intermediator) occurs very often. Although we do not have a proof, we found no way for the intermediator-to-adder FIFO to ever get more than 8. But, in case this does happen, we designed the FIFO to signal a stall to prevent more values from coming in.
 
 For the second case, the Intermediator would be at risk of recieving values from the multipler that would overwrite values that are accumulated and being stored. This can happen if most of the rows have only one value.
 
@@ -1064,13 +1114,14 @@ With a clever arrangement of 4 RAMs we can emulate one dual port RAM. To begin w
         \caption{On the fourth clock cycle, neither Port 1 or Port 2 receives a request.}
         \label{fig:xorram3}
     \end{subfigure}
-    \caption[Dual port RAM with zero clock cycle read latency]{This example shows 4 clock cycles of operation of a $1\times 5$ dual port RAM, created by combining 4 pseudo dual-port RAMs.}
+    \caption[The dual port RAM with zero clock cycle read latency.]{This example shows 4 clock cycles of operation of a $1\times 5$ dual port RAM, created by combining 4 pseudo dual-port RAMs.}
     \label{fig:xorram}
 \end{figure}
 %TODO: synthesis results
 \section{Results}
-The two important metrics for most MACs are the throughput and synthesis results.
-\subsection{Throughput}
-Although the MAC rarely stalls in theory. We thought it would be important to show this in practice as well. We use the matricies from the benchmark and show the percent of time the MAC stalls in each case. We should this in figure X.
-\subsection{Synthesis}
-We placed and routed one MAC using xst (Xilinx Synthesis Tools). The frequency of the MAC was 423Mhz. The MAC used 3,105 Registers, 3,236 LUTs, 5.5 RAM blocks, and 7 DSP (multiplier) blocks. By default xst uses RAM blocks for the FIFO even though their depth is equal to 32. XST can be forced to use LUTs, which would use 112 more LUTs and 3.5 fewer RAM blocks.
+\label{sec:mac_results}
+%The two important metrics for most MACs are the throughput and synthesis results.
+%\subsection{Throughput}
+%Although the MAC rarely stalls in theory. We thought it would be important to show this in practice as well. We use the matricies from the benchmark and show the percent of time the MAC stalls in each case. We should this in figure X.
+%\subsection{Synthesis}
+We placed and routed one MAC using xst (Xilinx Synthesis Tools). The frequency of the MAC was 263Mhz. The MAC used 3,105 Registers, 3,236 LUTs, 5.5 RAM blocks, and 7 DSP (multiplier) blocks. By default xst uses RAM blocks for the FIFO even though their depth is equal to 32. XST can be forced to use LUTs, which would use 112 more LUTs and 3.5 fewer RAM blocks.

@@ -10,11 +10,12 @@
 
 \bwtsecfalse
 %\bwtsectrue
-Floating point compression is the second half of matrix compression. \figurename~\ref{tbl:value} shows a comparison of compression schemes. In the end, we created a program and library called fzip. In total, fzip takes advantage of 2 compressible features of datasets: repeating values (patterns exactly 8 bytes long), and repeating prefixes (patterns less than 8 bytes long). For SpMV, we need to make a hardware decoder. So taking advantage of sequences that are more than 8 bytes long is difficult.
+Floating point compression is the second half of matrix compression. \figurename~\ref{tbl:value} shows a comparison of compression schemes. In the end, we created a program and library called fzip. In total, fzip takes advantage of 2 compressible features of datasets: repeating values (patterns exactly 8 bytes long), and repeating prefixes (patterns less than 8 bytes long). For SpMV, we need to make a hardware decoder. So taking advantage of sequences that are more than 8 bytes long is difficult. In the remainder of this chapter we talk about an analysis of floating point datasets (Section \ref{sec:fzipanalysis}), our approach to floating point compression (Section \ref{sec:fzipapproach}), our hardware decoder (Section~\ref{sec:fzip_decoder}) and our results (Section \ref{sec:fzipdiscussion}).
+
 \begin{table*}
 \centering
 \begin{threeparttable}
-    \caption[Value compression analysis]{Detailed value compression analysis and performance comparison}
+    \caption[Value compression analysis.]{Detailed value compression analysis and performance comparison, in terms of bytes per non-zero value.}
 \label{tbl:value}
 \begin{tabular}{ccccccccc}
 \hline
@@ -47,9 +48,9 @@ average\tnote{b} & $8.00$ & $7.22 \times 10^{5}$ & $2.16$ & $5.63$ & $2.56$ & $4
 %
 \section{Related Work}
 \label{sec:fziprelated}
-It was noted in \cite{prelim:kourtis, prelim:grigoras} that sparse matrices often have repeated values. This is the focus of our value compression. $R^3$ had a simple scheme using this feature. It stored the 256 most common values, so those common values could be represented as one byte. The performance of this scheme is shown in the column ``256 common" in Table~\ref{tbl:value}.\par
+It was noted in \cite{prelim:kourtis, prelim:grigoras} that sparse matrices often have repeated values. This is the focus of our value compression. Our previous work ($R^3$) had a simple scheme using this feature. It stored the 256 most common values so those common values could be represented as one byte. The performance of this scheme is shown in the column ``256 common" in Table~\ref{tbl:value}.\par
 We analyze gzip, bzip and FPC [\cite{prelim:burtscher}] to see how high a compression ratio over the uncompressed 8 bytes per value is achievable.\par
-Uncompressed data would take 8 bytes per element. Any good compression scheme should take less than 8 bytes per element. We looked at \cite{prelim:burtscher} describing it's own compression scheme FPC. FPC performs well. This scheme looks for repeated patterns. However it does not exploit the fact most of its compression comes from exact (8 byte) value repeats. For fun we created an ``anti-FPC" dataset (\figurename~\ref{fig:antiFpc})\\
+Uncompressed data would take 8 bytes per element. Any good compression scheme should take less than 8 bytes per element. We looked at \cite{prelim:burtscher} describing its own compression scheme, FPC. This scheme looks for repeated patterns. However it does not exploit the fact most of its compression comes from exact (8 byte) value repeats. To illustrate this point we created an ``anti-FPC" dataset (\figurename~\ref{fig:antiFpc}).
 \begin{figure}
     \center
 \begin{tikzpicture}[yscale=.5]
@@ -68,12 +69,12 @@ Uncompressed data would take 8 bytes per element. Any good compression scheme sh
     \node[anchor=west] at (\x,\y){\n};
 }
 \end{tikzpicture}
-\caption[Anti-FPC]{We engineering a dataset to make the performance of FPC look bad compared to other programs. Although unfair, this shows a type of pattern that FPC does not exploit and other programs do. This problem exists because FPC only uses predictors for compression.}
+\caption[The Anti-FPC dataset]{We engineering a dataset to make the performance of FPC look bad compared to other programs. Although unfair, this shows a type of pattern that FPC does not exploit and other programs do. This problem exists because FPC only uses predictors for compression.}
 \label{fig:antiFpc}
 \end{figure}
-\indent gzip performs quite well too. We have a general understanding of how gzip works. We suspect the reason for the good performance is the large memory space and being able to look up previously occurring 8-byte values.\par
-\indent Our focus on using repeated values is reinforced by looking at the number of unique values. If only the unique values were stored the average compression would be $2.16$ bytes per element. This can not be used by itself since this ignores the indexing required to access these values, but this gives an estimate of the possible compression size.\par
-In the remainder of this chapter we talk about an analysis of floating point datasets (Section \ref{sec:fzipanalysis}), our approach to floating point compression (Section \ref{sec:fzipapproach}) and our results (Section \ref{sec:fzipdiscussion}).
+
+\par gzip performs quite well too. We have a general understanding of how gzip works. We suspect the reason for the good performance is the large memory space and being able to look up previously occurring 8-byte values.
+\par Our focus on using repeated values is reinforced by looking at the number of unique values. If only the unique values were stored the average compression would be $2.16$ bytes per element. This can not be used by itself since this ignores the indexing required to access these values, but this gives an estimate of the possible compression size.
 \begin{figure}
 \center
 \begin{tikzpicture}[yscale=.7,xscale=2]
@@ -167,7 +168,7 @@ In the remainder of this chapter we talk about an analysis of floating point dat
 \shade[left color=black,right color=black!10] ([yshift=-.2cm]high.east) rectangle ([yshift=.2cm]low.west);
 
 \end{tikzpicture}
-\caption[Floating point repeat analysis]{The above figure shows the distribution of repeats in each dataset. Each shade represents a different number of repeats. For instance: \tikz \fill (0,0) rectangle (.2,.2);:$>512$, \tikz \fill[black!50] (0,0) rectangle (.2,.2);:$16$, \tikz \fill[black!20] (0,0) rectangle (.2,.2);:$2$, \tikz \fill[black!10] (0,0) rectangle (.2,.2);:$1$(no repeats).}
+\caption[Floating point repeat analysis.]{The above figure shows the distribution of repeats in each dataset. Each shade represents a different number of repeats. For instance: \tikz \fill (0,0) rectangle (.2,.2);:$>512$, \tikz \fill[black!50] (0,0) rectangle (.2,.2);:$16$, \tikz \fill[black!20] (0,0) rectangle (.2,.2);:$2$, \tikz \fill[black!10] (0,0) rectangle (.2,.2);:$1$(no repeats).}
 \label{fig:repeat}
 \end{figure}
 
@@ -206,47 +207,47 @@ Another pattern exists among the prefixes of the values. To understand why, look
     %\fill[color=black!\yb] (\xa,0.8) rectangle (\xb,1.2);
 \foreach \xa/\ya/\xb/\yb in {
 0/100.00/1/49.85,1/49.85/2/30.14,2/30.14/3/30.14,3/30.14/4/30.14,4/30.14/5/30.14,5/30.14/6/30.14,6/30.14/7/30.14,7/30.14/8/30.09,8/30.09/9/29.23,9/29.23/10/25.06,10/25.06/11/18.88,11/18.88/12/10.34,12/10.34/13/5.36,13/5.36/14/2.62,14/2.62/15/1.31,15/1.31/16/0.66,16/0.66/17/0.33,17/0.33/18/0.16,18/0.16/19/0.08,19/0.08/20/0.04,20/0.04/21/0.02,21/0.02/22/0.01,22/0.01/23/0.01,23/0.01/24/0.01,24/0.01/25/0.01,25/0.01/26/0.01,26/0.01/27/0.01,27/0.01/28/0.01,28/0.01/29/0.01,29/0.01/30/0.01,30/0.01/31/0.01,31/0.01/32/0.01,32/0.01/33/0.01,33/0.01/34/0.01,34/0.01/35/0.01,35/0.01/36/0.01,36/0.01/37/0.01,37/0.01/38/0.01,38/0.01/39/0.01,39/0.01/40/0.01,40/0.01/41/0.01,41/0.01/42/0.01,42/0.01/43/0.01,43/0.01/44/0.01,44/0.01/45/0.01,45/0.01/46/0.01,46/0.01/47/0.01,47/0.01/48/0.01,48/0.01/49/0.01,49/0.01/50/0.01,50/0.01/51/0.01,51/0.01/52/0.01,52/0.01/53/0.01,53/0.01/54/0.01,54/0.01/55/0.01,55/0.01/56/0.01,56/0.01/57/0.01,57/0.01/58/0.01,58/0.01/59/0.01,59/0.01/60/0.01,60/0.01/61/0.01,61/0.01/62/0.01,62/0.01/63/0.01,63/0.01/64/0.01,}{
-    \shade[left color=black!\ya, right color=black!\yb] (\xa,0.8) rectangle (\xb,1.2);
+    \fill[color=black!\yb] (\xa,0.8) rectangle (\xb,1.2);
 }
 \foreach \xa/\ya/\xb/\yb in {
 0/100.00/1/55.40,1/55.40/2/42.65,2/42.65/3/42.65,3/42.65/4/42.65,4/42.65/5/42.65,5/42.65/6/42.65,6/42.65/7/42.65,7/42.65/8/42.64,8/42.64/9/31.79,9/31.79/10/28.98,10/28.98/11/21.30,11/21.30/12/12.99,12/12.99/13/7.55,13/7.55/14/4.33,14/4.33/15/2.49,15/2.49/16/1.43,16/1.43/17/0.83,17/0.83/18/0.51,18/0.51/19/0.33,19/0.33/20/0.24,20/0.24/21/0.19,21/0.19/22/0.16,22/0.16/23/0.15,23/0.15/24/0.14,24/0.14/25/0.14,25/0.14/26/0.14,26/0.14/27/0.14,27/0.14/28/0.14,28/0.14/29/0.13,29/0.13/30/0.13,30/0.13/31/0.13,31/0.13/32/0.13,32/0.13/33/0.13,33/0.13/34/0.13,34/0.13/35/0.13,35/0.13/36/0.13,36/0.13/37/0.13,37/0.13/38/0.13,38/0.13/39/0.13,39/0.13/40/0.13,40/0.13/41/0.13,41/0.13/42/0.13,42/0.13/43/0.13,43/0.13/44/0.13,44/0.13/45/0.13,45/0.13/46/0.13,46/0.13/47/0.13,47/0.13/48/0.13,48/0.13/49/0.13,49/0.13/50/0.13,50/0.13/51/0.13,51/0.13/52/0.13,52/0.13/53/0.13,53/0.13/54/0.13,54/0.13/55/0.13,55/0.13/56/0.13,56/0.13/57/0.13,57/0.13/58/0.13,58/0.13/59/0.13,59/0.13/60/0.13,60/0.13/61/0.13,61/0.13/62/0.13,62/0.13/63/0.13,63/0.13/64/0.13,}{
-    \shade[left color=black!\ya, right color=black!\yb] (\xa,1.8) rectangle (\xb,2.2);
+    \fill[color=black!\yb] (\xa,1.8) rectangle (\xb,2.2);
 }
 \foreach \xa/\ya/\xb/\yb in {
 0/100.00/1/52.33,1/52.33/2/30.36,2/30.36/3/30.36,3/30.36/4/30.36,4/30.36/5/30.36,5/30.36/6/30.36,6/30.36/7/30.13,7/30.13/8/29.96,8/29.96/9/23.37,9/23.37/10/21.31,10/21.31/11/19.95,11/19.95/12/17.04,12/17.04/13/7.94,13/7.94/14/4.56,14/4.56/15/4.56,15/4.56/16/4.53,16/4.53/17/4.37,17/4.37/18/4.36,18/4.36/19/4.36,19/4.36/20/4.35,20/4.35/21/4.35,21/4.35/22/4.35,22/4.35/23/4.35,23/4.35/24/4.35,24/4.35/25/4.35,25/4.35/26/4.35,26/4.35/27/4.35,27/4.35/28/4.35,28/4.35/29/4.35,29/4.35/30/4.35,30/4.35/31/4.35,31/4.35/32/4.35,32/4.35/33/4.35,33/4.35/34/4.35,34/4.35/35/4.35,35/4.35/36/4.35,36/4.35/37/4.35,37/4.35/38/4.35,38/4.35/39/4.35,39/4.35/40/4.35,40/4.35/41/4.35,41/4.35/42/4.35,42/4.35/43/4.35,43/4.35/44/4.35,44/4.35/45/4.35,45/4.35/46/4.35,46/4.35/47/4.35,47/4.35/48/4.35,48/4.35/49/4.35,49/4.35/50/4.35,50/4.35/51/4.35,51/4.35/52/4.35,52/4.35/53/4.35,53/4.35/54/4.35,54/4.35/55/4.35,55/4.35/56/4.35,56/4.35/57/4.35,57/4.35/58/4.35,58/4.35/59/4.35,59/4.35/60/4.35,60/4.35/61/4.35,61/4.35/62/4.35,62/4.35/63/4.35,63/4.35/64/4.35,}{
-    \shade[left color=black!\ya, right color=black!\yb] (\xa,2.8) rectangle (\xb,3.2);
+    \fill[color=black!\yb] (\xa,2.8) rectangle (\xb,3.2);
 }
 \foreach \xa/\ya/\xb/\yb in {
 0/100.00/1/50.92,1/50.92/2/38.78,2/38.78/3/38.68,3/38.68/4/38.68,4/38.68/5/38.68,5/38.68/6/38.68,6/38.68/7/38.62,7/38.62/8/33.96,8/33.96/9/22.15,9/22.15/10/13.32,10/13.32/11/8.67,11/8.67/12/5.24,12/5.24/13/3.42,13/3.42/14/2.37,14/2.37/15/1.87,15/1.87/16/1.55,16/1.55/17/1.33,17/1.33/18/1.06,18/1.06/19/0.80,19/0.80/20/0.63,20/0.63/21/0.49,21/0.49/22/0.44,22/0.44/23/0.43,23/0.43/24/0.42,24/0.42/25/0.41,25/0.41/26/0.41,26/0.41/27/0.41,27/0.41/28/0.41,28/0.41/29/0.41,29/0.41/30/0.41,30/0.41/31/0.41,31/0.41/32/0.41,32/0.41/33/0.41,33/0.41/34/0.41,34/0.41/35/0.41,35/0.41/36/0.41,36/0.41/37/0.41,37/0.41/38/0.41,38/0.41/39/0.41,39/0.41/40/0.41,40/0.41/41/0.41,41/0.41/42/0.41,42/0.41/43/0.41,43/0.41/44/0.41,44/0.41/45/0.41,45/0.41/46/0.41,46/0.41/47/0.41,47/0.41/48/0.41,48/0.41/49/0.41,49/0.41/50/0.41,50/0.41/51/0.41,51/0.41/52/0.41,52/0.41/53/0.41,53/0.41/54/0.41,54/0.41/55/0.41,55/0.41/56/0.41,56/0.41/57/0.41,57/0.41/58/0.41,58/0.41/59/0.41,59/0.41/60/0.41,60/0.41/61/0.41,61/0.41/62/0.41,62/0.41/63/0.41,63/0.41/64/0.41,}{
-    \shade[left color=black!\ya, right color=black!\yb] (\xa,3.8) rectangle (\xb,4.2);
+    \fill[color=black!\yb] (\xa,3.8) rectangle (\xb,4.2);
 }
 \foreach \xa/\ya/\xb/\yb in {
 0/100.00/1/73.19,1/73.19/2/58.16,2/58.16/3/57.23,3/57.23/4/57.23,4/57.23/5/57.23,5/57.23/6/57.23,6/57.23/7/56.76,7/56.76/8/54.57,8/54.57/9/52.94,9/52.94/10/52.02,10/52.02/11/50.78,11/50.78/12/49.92,12/49.92/13/49.38,13/49.38/14/49.14,14/49.14/15/49.03,15/49.03/16/48.99,16/48.99/17/48.98,17/48.98/18/48.96,18/48.96/19/48.96,19/48.96/20/48.96,20/48.96/21/48.96,21/48.96/22/48.95,22/48.95/23/48.95,23/48.95/24/48.95,24/48.95/25/48.95,25/48.95/26/48.95,26/48.95/27/48.95,27/48.95/28/48.95,28/48.95/29/48.95,29/48.95/30/48.95,30/48.95/31/48.95,31/48.95/32/48.95,32/48.95/33/48.95,33/48.95/34/48.95,34/48.95/35/48.95,35/48.95/36/48.95,36/48.95/37/48.95,37/48.95/38/48.95,38/48.95/39/48.95,39/48.95/40/48.95,40/48.95/41/48.95,41/48.95/42/48.95,42/48.95/43/48.95,43/48.95/44/48.95,44/48.95/45/48.95,45/48.95/46/48.95,46/48.95/47/48.95,47/48.95/48/48.95,48/48.95/49/48.95,49/48.95/50/48.95,50/48.95/51/48.95,51/48.95/52/48.95,52/48.95/53/48.95,53/48.95/54/48.95,54/48.95/55/48.95,55/48.95/56/48.95,56/48.95/57/48.95,57/48.95/58/48.95,58/48.95/59/48.95,59/48.95/60/48.95,60/48.95/61/48.95,61/48.95/62/48.95,62/48.95/63/48.95,63/48.95/64/48.95,}{
-    \shade[left color=black!\ya, right color=black!\yb] (\xa,4.8) rectangle (\xb,5.2);
+    \fill[color=black!\yb] (\xa,4.8) rectangle (\xb,5.2);
 }
 \foreach \xa/\ya/\xb/\yb in {
 0/100.00/1/59.09,1/59.09/2/51.55,2/51.55/3/51.55,3/51.55/4/51.55,4/51.55/5/51.55,5/51.55/6/51.55,6/51.55/7/51.55,7/51.55/8/48.90,8/48.90/9/35.89,9/35.89/10/24.78,10/24.78/11/12.76,11/12.76/12/7.66,12/7.66/13/5.82,13/5.82/14/4.89,14/4.89/15/4.46,15/4.46/16/4.21,16/4.21/17/4.07,17/4.07/18/3.87,18/3.87/19/3.79,19/3.79/20/3.78,20/3.78/21/3.78,21/3.78/22/3.77,22/3.77/23/3.77,23/3.77/24/3.77,24/3.77/25/3.77,25/3.77/26/3.77,26/3.77/27/3.77,27/3.77/28/3.77,28/3.77/29/3.77,29/3.77/30/3.77,30/3.77/31/3.74,31/3.74/32/3.73,32/3.73/33/3.73,33/3.73/34/3.73,34/3.73/35/3.73,35/3.73/36/3.73,36/3.73/37/3.73,37/3.73/38/3.73,38/3.73/39/3.73,39/3.73/40/3.73,40/3.73/41/3.73,41/3.73/42/3.73,42/3.73/43/3.73,43/3.73/44/3.73,44/3.73/45/3.73,45/3.73/46/3.73,46/3.73/47/3.73,47/3.73/48/3.73,48/3.73/49/3.73,49/3.73/50/3.73,50/3.73/51/3.73,51/3.73/52/3.73,52/3.73/53/3.73,53/3.73/54/3.73,54/3.73/55/3.73,55/3.73/56/3.73,56/3.73/57/3.73,57/3.73/58/3.73,58/3.73/59/3.73,59/3.73/60/3.73,60/3.73/61/3.73,61/3.73/62/3.73,62/3.73/63/3.73,63/3.73/64/3.73,}{
-    \shade[left color=black!\ya, right color=black!\yb] (\xa,5.8) rectangle (\xb,6.2);
+    \fill[color=black!\yb] (\xa,5.8) rectangle (\xb,6.2);
 }
 \foreach \xa/\ya/\xb/\yb in {
 0/100.00/1/49.93,1/49.93/2/49.85,2/49.85/3/49.85,3/49.85/4/49.85,4/49.85/5/49.85,5/49.85/6/49.85,6/49.85/7/49.85,7/49.85/8/49.85,8/49.85/9/12.48,9/12.48/10/11.11,10/11.11/11/7.59,11/7.59/12/4.18,12/4.18/13/2.09,13/2.09/14/1.05,14/1.05/15/0.52,15/0.52/16/0.26,16/0.26/17/0.13,17/0.13/18/0.07,18/0.07/19/0.04,19/0.04/20/0.02,20/0.02/21/0.02,21/0.02/22/0.02,22/0.02/23/0.02,23/0.02/24/0.02,24/0.02/25/0.02,25/0.02/26/0.02,26/0.02/27/0.02,27/0.02/28/0.02,28/0.02/29/0.02,29/0.02/30/0.02,30/0.02/31/0.02,31/0.02/32/0.02,32/0.02/33/0.02,33/0.02/34/0.02,34/0.02/35/0.02,35/0.02/36/0.02,36/0.02/37/0.02,37/0.02/38/0.02,38/0.02/39/0.02,39/0.02/40/0.02,40/0.02/41/0.02,41/0.02/42/0.02,42/0.02/43/0.02,43/0.02/44/0.02,44/0.02/45/0.02,45/0.02/46/0.02,46/0.02/47/0.02,47/0.02/48/0.02,48/0.02/49/0.02,49/0.02/50/0.02,50/0.02/51/0.02,51/0.02/52/0.02,52/0.02/53/0.02,53/0.02/54/0.02,54/0.02/55/0.02,55/0.02/56/0.02,56/0.02/57/0.02,57/0.02/58/0.02,58/0.02/59/0.02,59/0.02/60/0.02,60/0.02/61/0.02,61/0.02/62/0.02,62/0.02/63/0.02,63/0.02/64/0.02,}{
-    \shade[left color=black!\ya, right color=black!\yb] (\xa,6.8) rectangle (\xb,7.2);
+    \fill[color=black!\yb] (\xa,6.8) rectangle (\xb,7.2);
 }
 \foreach \xa/\ya/\xb/\yb in {
 0/100.00/1/40.96,1/40.96/2/34.32,2/34.32/3/34.32,3/34.32/4/34.32,4/34.32/5/34.32,5/34.32/6/34.32,6/34.32/7/34.29,7/34.29/8/34.27,8/34.27/9/33.30,9/33.30/10/23.61,10/23.61/11/14.84,11/14.84/12/8.33,12/8.33/13/4.60,13/4.60/14/2.43,14/2.43/15/1.29,15/1.29/16/0.70,16/0.70/17/0.40,17/0.40/18/0.24,18/0.24/19/0.15,19/0.15/20/0.10,20/0.10/21/0.06,21/0.06/22/0.04,22/0.04/23/0.04,23/0.04/24/0.03,24/0.03/25/0.03,25/0.03/26/0.03,26/0.03/27/0.03,27/0.03/28/0.03,28/0.03/29/0.03,29/0.03/30/0.03,30/0.03/31/0.02,31/0.02/32/0.02,32/0.02/33/0.02,33/0.02/34/0.02,34/0.02/35/0.02,35/0.02/36/0.02,36/0.02/37/0.02,37/0.02/38/0.02,38/0.02/39/0.02,39/0.02/40/0.02,40/0.02/41/0.02,41/0.02/42/0.02,42/0.02/43/0.02,43/0.02/44/0.02,44/0.02/45/0.02,45/0.02/46/0.02,46/0.02/47/0.02,47/0.02/48/0.02,48/0.02/49/0.02,49/0.02/50/0.02,50/0.02/51/0.02,51/0.02/52/0.02,52/0.02/53/0.02,53/0.02/54/0.02,54/0.02/55/0.02,55/0.02/56/0.02,56/0.02/57/0.02,57/0.02/58/0.02,58/0.02/59/0.02,59/0.02/60/0.02,60/0.02/61/0.02,61/0.02/62/0.02,62/0.02/63/0.02,63/0.02/64/0.02,}{
-    \shade[left color=black!\ya, right color=black!\yb] (\xa,7.8) rectangle (\xb,8.2);
+    \fill[color=black!\yb] (\xa,7.8) rectangle (\xb,8.2);
 }
 \foreach \xa/\ya/\xb/\yb in {
 0/100.00/1/64.34,1/64.34/2/54.22,2/54.22/3/54.22,3/54.22/4/54.22,4/54.22/5/54.22,5/54.22/6/54.22,6/54.22/7/53.67,7/53.67/8/35.26,8/35.26/9/27.48,9/27.48/10/19.55,10/19.55/11/14.08,11/14.08/12/10.56,12/10.56/13/8.73,13/8.73/14/7.60,14/7.60/15/6.81,15/6.81/16/6.44,16/6.44/17/6.11,17/6.11/18/5.91,18/5.91/19/5.51,19/5.51/20/5.29,20/5.29/21/5.24,21/5.24/22/5.09,22/5.09/23/5.07,23/5.07/24/5.04,24/5.04/25/4.99,25/4.99/26/4.97,26/4.97/27/4.93,27/4.93/28/4.92,28/4.92/29/4.91,29/4.91/30/4.90,30/4.90/31/4.90,31/4.90/32/4.90,32/4.90/33/4.90,33/4.90/34/4.90,34/4.90/35/4.89,35/4.89/36/4.89,36/4.89/37/4.88,37/4.88/38/4.87,38/4.87/39/4.87,39/4.87/40/4.87,40/4.87/41/4.87,41/4.87/42/4.87,42/4.87/43/4.87,43/4.87/44/4.87,44/4.87/45/4.87,45/4.87/46/4.87,46/4.87/47/4.87,47/4.87/48/4.87,48/4.87/49/4.87,49/4.87/50/4.87,50/4.87/51/4.87,51/4.87/52/4.87,52/4.87/53/4.87,53/4.87/54/4.87,54/4.87/55/4.87,55/4.87/56/4.87,56/4.87/57/4.87,57/4.87/58/4.87,58/4.87/59/4.87,59/4.87/60/4.87,60/4.87/61/4.87,61/4.87/62/4.87,62/4.87/63/4.87,63/4.87/64/4.87,}{
-    \shade[left color=black!\ya, right color=black!\yb] (\xa,8.8) rectangle (\xb,9.2);
+    \fill[color=black!\yb] (\xa,8.8) rectangle (\xb,9.2);
 }
 \foreach \xa/\ya/\xb/\yb in {
 0/100.00/1/100.00,1/100.00/2/100.00,2/100.00/3/100.00,3/100.00/4/100.00,4/100.00/5/100.00,5/100.00/6/100.00,6/100.00/7/100.00,7/100.00/8/100.00,8/100.00/9/99.93,9/99.93/10/98.70,10/98.70/11/97.98,11/97.98/12/97.60,12/97.60/13/97.44,13/97.44/14/97.30,14/97.30/15/97.22,15/97.22/16/97.18,16/97.18/17/97.16,17/97.16/18/97.16,18/97.16/19/97.16,19/97.16/20/97.16,20/97.16/21/97.16,21/97.16/22/97.16,22/97.16/23/97.16,23/97.16/24/97.16,24/97.16/25/97.16,25/97.16/26/97.16,26/97.16/27/97.16,27/97.16/28/97.16,28/97.16/29/97.16,29/97.16/30/97.16,30/97.16/31/97.16,31/97.16/32/97.16,32/97.16/33/97.16,33/97.16/34/97.16,34/97.16/35/97.16,35/97.16/36/97.16,36/97.16/37/97.16,37/97.16/38/97.16,38/97.16/39/97.16,39/97.16/40/97.16,40/97.16/41/97.16,41/97.16/42/97.16,42/97.16/43/97.16,43/97.16/44/97.16,44/97.16/45/97.16,45/97.16/46/97.16,46/97.16/47/97.16,47/97.16/48/97.16,48/97.16/49/97.16,49/97.16/50/97.16,50/97.16/51/97.16,51/97.16/52/97.16,52/97.16/53/97.16,53/97.16/54/97.16,54/97.16/55/97.16,55/97.16/56/97.16,56/97.16/57/97.16,57/97.16/58/97.16,58/97.16/59/97.16,59/97.16/60/97.16,60/97.16/61/97.16,61/97.16/62/97.16,62/97.16/63/97.16,63/97.16/64/97.16,}{
-    \shade[left color=black!\ya, right color=black!\yb] (\xa,9.8) rectangle (\xb,10.2);
+    \fill[color=black!\yb] (\xa,9.8) rectangle (\xb,10.2);
 }
 
 \end{tikzpicture}
-\caption[Floating point prefix analysis]{The above figure represents local prefix prediction. The figure shows the density function of 2 adjacent values sharing at least $x$ number of prefix bits. All of the data sets start at $(0,100\%)$. The curves end at the percent of values that are identical to their previous value for that dataset.}
+\caption[Floating point prefix analysis.]{The above figure represents local prefix prediction. The figure shows the density function of 2 adjacent values sharing at least $x$ number of prefix bits. All of the data sets start at $(0,100\%)$. The curves end at the percent of values that are identical to their previous value for that dataset.}
 \label{fig:prefix}
 \end{figure}%
 Datasets might also have repeating patterns of values. For example, the sequence $1.0$, $2.0$, $3.0$, $1.0$, $2.0$, $3.0$ has an obvious pattern. One can use the Burrows Wheeler Transform\cite{prelim:burrows} to analyze these patterns. \figurename~\ref{fig:bwt} describes this algorithm some, however, many other sources describe this algorithm in more detail, for example \cite{prelim:burrows,prelim:salomon}. \figurename~\ref{fig:pattern} analyzes the number of repeats that appear after the Burrow-Wheeler Transform. As the figure shows, BWT reveals patterns in about half of the matrices, but these are also the matrices with a lot of repeats to begin with.
@@ -366,7 +367,7 @@ EABC\$ABCDEABC\textcolor{black}{D}\\
 \small
 %\node at (2,14) {\shortstack{Percent of values in repeating sequences of length $\geq10$ \tikz \draw[fill=green] (0,0) rectangle (.25,.25);,\\ between $10$ and $1$ \tikz \draw[fill=yellow] (0,0) rectangle (.25,.25);, $=1$ \tikz \draw[fill=red] (0,0) rectangle (.25,.25);}};
 \end{tikzpicture}
-\caption[Floating point pattern analysis using BWT]{Pattern analysis using the Burrows-Wheeler Transform. Each shade represents the number of consecutive repeats in a repeating sequence. \tikz{\fill[black] (0,0) rectangle (.25,.25);} represents sequences longer than 9. \tikz \fill[black!50] (0,0) rectangle (.25,.25); represents sequences of length 5. \tikz \fill[black!10] (0,0) rectangle (.25,.25); represents sequences equal to 1 (non-repeating).}
+\caption[Floating point pattern analysis using BWT.]{Pattern analysis using the Burrows-Wheeler Transform. Each shade represents the number of consecutive repeats in a repeating sequence. \tikz{\fill[black] (0,0) rectangle (.25,.25);} represents sequences longer than 9. \tikz \fill[black!50] (0,0) rectangle (.25,.25); represents sequences of length 5. \tikz \fill[black!10] (0,0) rectangle (.25,.25); represents sequences equal to 1 (non-repeating).}
 \label{fig:pattern}
 \end{figure}
 
@@ -547,7 +548,7 @@ Since BWT does not provide great compression, depends on the traversal of the ma
 \end{tikzpicture}
 \caption{The above sorted list of values gives a second visual representation of how the partition grows.}
 \end{subfigure}
-\caption[Floating point prefix compression algorithm]{The above 2 figures show the first 8 partition cuts for prefix compression for the example dataset \{0.1, 1.0, 3.0, 5.0, 3.0, 100.0, 4.0, 2.0\}. For simplicity half-precision (16-bit) encoding is used.}
+\caption[The floating point prefix compression algorithm.]{The above 2 figures show the first 8 partition cuts for prefix compression for the example dataset \{0.1, 1.0, 3.0, 5.0, 3.0, 100.0, 4.0, 2.0\}. For simplicity half-precision (16-bit) encoding is used.}
 \label{fig:jiles}
 \end{figure}
 \subsection{Prefix Compression}
@@ -682,7 +683,7 @@ Prefix compression does not compress all of the repeated values. So, fzip extend
     }};
 
 \end{tikzpicture}
-\caption[Floating point compression comparing gzip, bzip, FPC and fzip]{The comparison of different compression schemes shows fzip performs competitively.}
+\caption[Floating point compression comparing gzip, bzip, FPC and fzip.]{The comparison of different compression schemes shows fzip performs competitively.}
 \label{fig:compare}
 \end{figure}
 %\begin{figure}
@@ -767,5 +768,49 @@ Prefix compression does not compress all of the repeated values. So, fzip extend
 %\label{fig:runtime}
 %\end{figure}
 
+\section{The fzip decoder}
+\label{sec:fzip_decoder}
+Like the SMC decoder from Section~\ref{sec:smc_decoder} in the previous chapter, the fzip hardware decoder relies on lookup tables to decode the two streams (see \figurename~\ref{fig:fzip_decoder}). First the dictonary is loaded onto a large 512 value lookup table (LUT). This lookup table uses the code length to determine how much to shift the first shift buffer. The LUT then determines if the second shift buffer is needed (the code is a variable length delta). Then the delta (or newline) is sent to the running row and column index and the current row and column index is outputed from the decoder.
+\begin{figure}
+    \begin{tikzpicture}
+        \node at (0,1) {Memory};
+        \node at (4,1) {Decoder};
+        \draw [dashed](1.8,1.5) -- (1.8,-5);
+        \node at (-.2,0)[draw,trapezium,trapezium right angle=120,trapezium left angle=60](h){Header};
+        \node at (-.2,-1)[draw,trapezium,trapezium right angle=120,trapezium left angle=60](d){Dictionary};
+        \node at (-.2,-2)[draw,trapezium,trapezium right angle=120,trapezium left angle=60](common){Commons};
+        \node at (-.2,-3.2)[draw,trapezium,trapezium right angle=120,trapezium left angle=60](ds){\shortstack{Data\\Stream}};
+        \node at (-.2,-4.6)[draw,trapezium,trapezium right angle=120,trapezium left angle=60](as){\shortstack{Argument\\Stream}};
+
+        \node at (5, 0) [draw,minimum width=4cm](sb1){Shifter Buffer};
+        \node at (3.5, -1.5) [draw,minimum height=1cm](l){LUT};
+        \node at (5, -3) [draw,minimum width=4cm](sb2){Shifter Buffer};
+
+        \node at (9, -4) [minimum width=2cm](shared){\shortstack{Shared\\Memory}};
+        \draw (shared.south west) -- (shared.north west) -- (shared.north east) -- (shared.south east);
+
+        \node at (11,-1.5) (output){Output};
+
+        \draw[->,shorten >=2pt] (ds) .. controls ++(1.5,0)  and ++(-2.5,0) .. (sb1);
+        \draw[->,shorten >=2pt] (sb1.350) .. controls ++(0,-.5) and ++(0,.5) .. (l.north -| 3.7,0);
+        \draw[<-,shorten <=2pt] (sb1.south -| 3.5,0) .. controls ++(0,-.5) and ++(0,.5) .. (l.north -| 3.3,0);
+        \draw[->,shorten >=2pt] (as) .. controls ++(1.5,0) and ++(-2.5,0) .. (sb2);
+        \draw[->,shorten >=2pt] (l) -- (l|-sb2.north);
+        %\draw (l) |- (sb2);
+        \draw[->,shorten >=2pt] (sb2.10) .. controls ++(0,.5) and ++(0,1) .. (shared.north -| 8.8,0);
+        \draw[->,shorten >=2pt] (sb2.10) .. controls ++(0,.5) and ++(-1,0) .. (8,-1.5);
+        \draw[->,shorten >=2pt] (shared.north -| 9.2,0) .. controls ++(0,1) and ++(-1,0) .. (10,-1.5);
+        \draw[->,shorten >=2pt] (d) .. controls ++(1.5,0) and ++(-1,0) .. (l);
+        \draw[->,shorten >=2pt] (l) -- (output);
+
+        \draw[->,shorten >=2pt] (common) .. controls ++(3,0) and (0,-4) .. (shared);
+
+    \end{tikzpicture}
+    \caption{The hardware design of the fzip decoder.}
+    \label{fig:fzip_decoder}
+\end{figure}
+
+We do not have the exact area and performance of this decoder because we only designed a decoder that combined the index and floating point decoding. However, the first shift buffer uses 293 LUTs and 60 registers. The second shift buffer uses 957 LUTs and 146 registers. The combined decoder has a top frequency of 150 Mhz after place and route using xst.
+\section{Results}
+\label{sec:fzipdiscussion}
 We present fzip's results in \figurename~\ref{fig:compare}.
-%\section{Results}

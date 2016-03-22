@@ -28,31 +28,30 @@
         \draw (.3,2.8) -- (3.7,2.8) -- (3.7, 2.92) -- (2,3.59) -- (.3,2.92) -- cycle;
         \node at (2,3.1) {\shortstack{Computing\\SpMV on FPGAs}};
     \end{tikzpicture}
-    \caption{Because different aspects limit the performance of SpMV on FPGAs, no one optimization will lead to significant benefit for SpMV. We identified these three optimizations that together lead to a significant performance benefit.}
+    \caption[The three pillars of optimization for computing SpMV on FPGAs.]{Because different aspects limit the performance of SpMV on FPGAs, no one optimization will lead to significant benefit for SpMV. We identified these three optimizations that together lead to a significant performance benefit.}
     \label{fig:pillars}
 \end{figure}
 
-In the previous chapter, we have discussed how others have approached computing SpMV on FPGAs and other processors. We build upon some of the good ideas and add our own. When these pillars are in place the dataflow of the design still looks the same as other implementations (\figurename~\ref{fig:dataflow}). The architecture diagram also follows the same general flow of the dataflow diagram (\figurename~\ref{fig:SpMV}).
-Three pillars emerged during the design of the hardware description and software: designing the traversal of the matrix, designing the multiply-accumulator, and designing the matrix compression (\figurename~\ref{fig:pillars}). The next three sections describe these pillars and the interactions between them.
+In the previous chapter, we discussed how others approach computing SpMV on FPGAs and other processors. We build upon these ideas and add our own. Three pillars emerged during the design of the hardware description and software: designing the traversal of the matrix, designing the multiply-accumulator, and designing the matrix compression. \figurename~\ref{fig:pillars} abstractly illustrates our view that all three pillars need to be in place to achieve competetive performance. The next three sections describe these pillars and the interactions between them.
 
 \section{First Pillar: Matrix Traversal}
-\par The first pillar, matrix traversal, primarily helps with vector reuse. Column traversal has a major effect on vector reuse. Many papers argue that vector caching is the way to achieve $x$ vector reuse for FPGAs [\cite{prelim:umuroglu, prelim:nagar1}] (TODO: more cites). We disagree. With the ability to use column traversal in a horizontal subsection of say 1000 rows one can perfectly reuse vector values in this section. This requires the storage of 1000 intermediate y values or 8KB. Compare this to caching. Assume there are 10 non-zero elements per row and assume each vector value gets accessed twice. Then to achieve good caching the cache must support 5000 values or 40KB. This also ignores storing the vector indices of the cached values. So, in this example, storing intermediate values is more than 5 times more space efficient than vector caching.
+\par The first pillar, matrix traversal, primarily helps with vector reuse. Column traversal has a major effect on vector reuse. Many papers argue that vector caching is the way to achieve $x$ vector reuse for FPGAs [\cite{prelim:umuroglu, prelim:nagar1}]. We disagree. With the ability to use column traversal in a horizontal subsection of say 1000 rows one can perfectly reuse vector values in this section. This requires the storage of 1000 intermediate y values or 8KB. Compare this to caching. Assume there are 10 non-zero elements per row and assume each vector value gets accessed twice. Then to achieve good caching the cache must support 5000 values or 40KB. This also ignores storing the vector indices of the cached values. So, in this example, storing intermediate values is more than 5 times more space efficient than $x$ vector caching.
 \par The second advantage of mixing row and column traversal is that it leads to smaller deltas. In this paper, a delta is the traversal distance between a matrix element and its preceding matrix element in the traversal. To achieve high $x$ vector reuse and small deltas we use row-column-row traversal. Chapter \ref{chp:traversal} discusses matrix traversal in detail.
 
 \section{Second Pillar: Multiply-accumulator}
 
-\par The second pillar, the multiply accumulator, has to accumulate multiple rows at a time to allow different traversals (the first pillar). Several multiply-accumulators exists, but they rely on row-major traversal \cite{}. Although, we do use pre-existing floating-point cores created by Flopoco [\cite{}]. We created an IP core called the Intermediator, which stores intermediate $y$ values and allows for row-column-row traversal. Chapter \ref{chp:mac} discusses the multiply-accumulator in detail.
+\par The second pillar, the multiply accumulator, has to accumulate multiple rows at a time to allow different traversals (the first pillar). Several multiply-accumulators exists, but they rely on row-major traversal. Although, we used pre-existing floating-point cores created by Flopoco [\cite{prelim:dedinechin}]. We created an IP core called an Intermediator, which stores intermediate $y$ values and allows for row-column-row traversal. Chapter \ref{chp:mac} discusses the multiply-accumulator in detail.
 
 \section{Third Pillar: Matrix Compression}
-\par The third pillar, compression, may be the most important for FPGAs. Compression of the matrix has a large amount of importance, because reading the matrix takes up a majority of the memory bandwidth. The current view in the SpMV field does not count preprocessing of the matrix towards the SpMV runtime. This is because SpMV is usually used in iterative and repetitive methods. We agree with this sentiment.
-\subsection{Index compression}
+\par The third pillar, compression, may be the most important for FPGAs. Compression of the matrix has a large amount of importance, because reading the matrix takes up a majority of the memory bandwidth. The current view in the SpMV field does not count preprocessing of the matrix towards the SpMV runtime. This is because SpMV is usually used in iterative and repetitive methods. We agree with this sentiment. Matrix compression is split into to seperate problems: index compression and floating point compression.
+\subsection{Index Compression}
 \par Using deltas to compress indices is the first and easiest step towards this pillar. Many compression implementations try to align variable length encoding to 4 bit or other size boundaries. We give little regard to boundaries because we find the added compression to be worth the extra FPGA space the decoder needs. Chapter \ref{chp:compression} discusses delta compression in detail.
 %
 \subsection{Floating Point Compression}
-\par Value compression is tricky but has a potential to save large amounts of space and thus memory bandwidth. Values repeat more than one would expect in matrices \cite{}. Taking advantage of this repetition is the biggest step towards good compression. \figurename~\ref{fig:uniqueVgflops} shows how much of an effect this pattern has on the performance of our previous SpMV implementation, $R^3$. Chapter \ref{chp:fzip} discusses floating point compression in detail.
+\par Floating point compression is tricky but has a potential to save large amounts of space and thus memory bandwidth. Values repeat more than one would expect in matrices \cite{prelim:kourtis}. Taking advantage of this repetition is the biggest step towards good compression. \figurename~\ref{fig:uniqueVgflops} in the previous chapter showed how much of an effect this pattern has on the performance of our previous SpMV implementation, $R^3$. Chapter~\ref{chp:fzip} discusses our new floating point compression in detail.
 
 \subsection{Multi-port Shared Memory}
-\par Because good value compression requires a significant amount of on-chip memory space, we designed a shared memory IP block. This means instead of using 1 RAM block on each PE to store the 512 most common floating point values, we use one RAM block per PE to create a large shared memory to store the 8,192 most common floating point values. Chapter \ref{chp:memory} discusses the design of the shared memory IP block.%
+\par Because good value compression requires a significant amount of on-chip memory space, we designed a shared memory IP block. This means instead of using 1 RAM block on each PE to store the 512 most common floating point values, we use one RAM block per PE to create a large shared memory to store the 8,192 most common floating point values. Chapter~\ref{chp:memory} discusses the design of the shared memory IP block.%
 %
 \begin{figure}
 \centering
@@ -89,7 +88,7 @@ Three pillars emerged during the design of the hardware description and software
 \path [draw, gray, thick, >=stealth', <->, shorten >=2pt] (vCache) -- (dec);
 
 \end{tikzpicture}
-\caption[Diagram of a single processing element]{A single processing element. The arrows show the flow of data through the processing element. Although this diagram shows the memory access to each of the 3 places in memory as separate, they share one memory port. The diagram also does not show the FIFOs that help keep the pipeline full.}
+\caption[Diagram of a single processing element.]{A single processing element. The arrows show the flow of data through the processing element. Although this diagram shows the memory access to each of the 3 places in memory as separate, they share one memory port. The diagram also does not show the FIFOs that help keep the pipeline full.}
 \label{fig:SpMV}
 \end{figure}%
 %
@@ -144,11 +143,11 @@ Three pillars emerged during the design of the hardware description and software
 %\node at (9.25,-.5) [rectangle,fill=white,inner sep=2pt](a){40GB/s Sustained Memory Bandwidth};
 
 \end{tikzpicture}
-\caption[Modified high-level diagram of the Convey HC-2ex]{Our implementation has one shared memory for storing repeating values in the sparse matrices.}
+\caption[Modified high-level diagram of the Convey HC-2ex.]{Our implementation has one shared memory for storing repeating values in the sparse matrices.}
 \label{fig:highlevel2}
 \end{figure}
 \section{High Level Design}
-Designing high performance reconfigurable computing implementations has a general two step process, which we follow. First, design one processing element (PE) to solve the problem (see \figurename~\ref{fig:SpMV}). Second, replicate that PE until all the FPGAs are full. In addition, we have a shared memory (see \figurename~\ref{fig:highlevel2}).
+Designing high performance reconfigurable computing implementations has a general two step process, which we follow. First, design one processing element (PE) to solve the problem (see \figurename~\ref{fig:SpMV}). Second, replicate that PE until all the FPGAs are full (see \figurename~\ref{fig:highlevel2}). In addition to the PEs, we have a shared memory on the FPGA as well.
 
 The PEs recieve instructions through a 1D systolic array. Each PE has 14 registers. Each PE has 8 instructions: RESET, READ\_REGISTER, WRITE\_REGISTER, WRITE\_DELTA\_CODES, WRITE\_FZIP\_CODES, WRITE\_SHARED\_MEMORY, and COMPUTE\_SPMV.
 

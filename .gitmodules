@@ -1,3 +1,6 @@
 [submodule "repos/spMatrixHelp"]
 	path = repos/spMatrixHelp
 	url = git@github.com:kevintownsend/spMatrixHelp.git
+[submodule "repos/convey_spmv"]
+	path = repos/convey_spmv
+	url = git@github.com:kevintownsend/convey_spmv.git

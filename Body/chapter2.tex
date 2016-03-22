@@ -1,7 +1,8 @@
 \chapter{BACKGROUND}
 \label{chp:background}
-In its simplest form sparse matrix vector multiplication is the operation $y=Ax$, where A is an $M \times N$, $x$ is a vector of length $N$, and $y$ is a vector of length $M$. As Equation 2.1 shows, matrix vector multiplication is a series of dot products.
-\begin{equation}
+In its simplest form sparse matrix vector multiplication is the operation $y=Ax$, where A is an $M \times N$, $x$ is a vector of length $N$, and $y$ is a vector of length $M$. Consider the example SpMV operation in Equation~\ref{eqn:example}. As Equation~\ref{eqn:example2} shows, matrix vector multiplication is a series of dot products.
+\begin{eqnarray}
+\label{eqn:example}
 \left[\begin{IEEEeqnarraybox*}[][c]{,c,}
 {y_1}\\
 {y_2}\\
@@ -12,18 +13,7 @@ In its simplest form sparse matrix vector multiplication is the operation $y=Ax$
 {y_7}\\
 {y_8}
 \end{IEEEeqnarraybox*}\right]
-=
-\left[\begin{IEEEeqnarraybox*}[][c]{,c,}
-{A_{11}x_1}{+A_{14}x_4}{+A_{17}x_7}\\
-{A_{25}x_5}{+A_{28}x_8}\\
-{A_{32}x_3}{+A_{33}x_3}{+A_{36}x_6}{+A_{37}x_7}\\
-{A_{41}x_1+A_{45}x_5}\\
-{A_{53}x_3+A_{54}x_4+A_{57}x_7+A_{58}x_8}\\
-{A_{62}x_2+A_{65}x_5}\\
-{A_{72}x_2+A_{73}x_3+A_{76}x_6+A_{78}x_8}\\
-{A_{83}x_3+A_{84}x_4+A_{85}x_5+A_{86}x_6}
-\end{IEEEeqnarraybox*}\right]
-=
+&=&
 \left[\begin{IEEEeqnarraybox*}[][c]{,c/c/c/c/c/c/c/c,}
 {A_{11}} & 0 & 0 & {A_{14}} & 0 & 0 & {A_{17}} & 0\\
 0 & 0 & 0 & 0 & {A_{25}} & 0 & 0 & {A_{28}} \\
@@ -43,17 +33,34 @@ In its simplest form sparse matrix vector multiplication is the operation $y=Ax$
 {x_6}\\
 {x_7}\\
 {x_8}
+\end{IEEEeqnarraybox*}\right]\\
+&=&
+\left[\begin{IEEEeqnarraybox*}[][c]{,l,}
+{A_{11}x_1}{+A_{14}x_4}{+A_{17}x_7}\\
+{A_{25}x_5}{+A_{28}x_8}\\
+{A_{32}x_3}{+A_{33}x_3}{+A_{36}x_6}{+A_{37}x_7}\\
+{A_{41}x_1+A_{45}x_5}\\
+{A_{53}x_3+A_{54}x_4+A_{57}x_7+A_{58}x_8}\\
+{A_{62}x_2+A_{65}x_5}\\
+{A_{72}x_2+A_{73}x_3+A_{76}x_6+A_{78}x_8}\\
+{A_{83}x_3+A_{84}x_4+A_{85}x_5+A_{86}x_6}
 \end{IEEEeqnarraybox*}\right]
-\label{eqn:example}
-\end{equation}
-\par Sparse matrices differ from dense matrices in that they contain mostly (usually more than 99\%) zeros. For example, consider the matrix representation of the Facebook friends graph [\cite{prelim:zuckerburg}]. Each row contains non-zero values representing friend connections and zero values representing non-friends, or people you do not know. Being friends with .1\% of Facebook users would require being friends with 1 million people, an impressive feat. In other words, from the time you started reading this paper 100 people have joined Facebook and are not friends with you. The average user has 300 friends. For this reason, sparsity of matrices is usually measured in elements per row rather than a percent. The percent sparsity of the matrix keeps growing but the number of non-zero elements per row stays roughly constant.
+\label{eqn:example2}
+\end{eqnarray}
+\par Sparse matrices differ from dense matrices in that they contain mostly (usually more than 99\%) zeros. This makes the number of non-zeros $nnz$ an important measurement of sparse matrices. In most datasets $nnz$ grows by $O(M)$ instead of $O(MN)$.
+
+For example, consider the matrix representation of the Facebook friends graph [\cite{prelim:zuckerburg}]. Each row contains non-zero values representing friend connections and zero values representing non-friends, or people you do not know. Sparsity of matrices is usually measured in elements per row rather than a percent. It makes more sense to say the average user has 300 facebook friends that to say the average facebook user is friends with 0.00003\% of facebook users. And, the percent sparsity of the matrix will keep growing but the number of non-zero elements per row will stay relatively constant.
+
+The reader may skip directly to Chapter~\ref{chp:method}, which discusses our approach to SpMV on FPGAs, at any point in this chapter. The rest of the chapter disscusses implementations of SpMV and their computation platforms starting with COO format in Section~\ref{sec:coo}. Then, Section~\ref{sec:cpu} discusses CPUs, followed by optimizations relevant to CPUs in Sections~\ref{sec:csr}, \ref{sec:bsr}, and \ref{sec:blocking}. Then Section~\ref{sec:gpu} disscusses GPUs, followed by optimizations relevant to GPUs in Sections~\ref{sec:ellpack}, and \ref{sec:bellpack}. Then Section~\ref{sec:fpga} discusses FPGAs, followed by optimizations relevant of FPGAs in Sections~\ref{sec:delta}, and \ref{sec:value}. Lastly, Section~\ref{sec:benchmarking} discusses benchmarking the performance of SpMV.
+
 \section{Coordinate Format (COO)}
-\par Dense matrices can be stored as an array of values. However, if sparse matrices were stored this way they would require orders of magnitude more space than a simple alternative. The alternative, coordinate format (COO), stores 3 arrays: a row index array, a column index array, and a value array. By convention, row and column indices are 4 byte (32-bit) integers. Values are either single-precision (32-bit) or double-precision (64-bit) floating point values. For simplicity, this paper only concerns itself with double precision values. Using the example matrix, the COO format would be:\\
+\label{sec:coo}
+\par Dense matrices can be stored as an array of values. However, if sparse matrices were stored this way they would require orders of magnitude more space than a simple alternative. (The facebook matrix would have to store a quintillion ($10^{18}$) values if stored in dense format.) This alternative, coordinate format (COO), stores 3 arrays: a row index array, a column index array, and a value array. By popular convention, row and column indices are 4 byte (32-bit) integers. Values are either single-precision (32-bit) or double-precision (64-bit) floating point values. For simplicity, this paper only concerns itself with double precision values. Using the example matrix, the COO format would be:\\
 ROW:    0, 0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 4, 4, 4, 4, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7 \\ 
 COLUMN: 0, 3, 6, 4, 7, 1, 2, 5, 6, 0, 4, 2, 3, 6, 7, 1, 4, 1, 2, 5, 7, 2, 3, 4, 5\\ 
 VALUE: $A_{11}$, $A_{14}$, $A_{17}$, $A_{25}$, $A_{28}$, $A_{32}$, $A_{33}$, $A_{36}$, $A_{37}$, $A_{41}$, $A_{45}$, $A_{53}$, $A_{54}$, $A_{57}$, $A_{58}$, $A_{62}$, $A_{65}$, $A_{72}$, $A_{73}$, $A_{76}$, $A_{78}$, $A_{83}$, $A_{84}$, $A_{85}$, $A_{86}$ \par
-You will notice that the elements are traversed in row-major form. Row-major traversal starts at the left most element of the first row ($A_{11}$). Then proceeds to the next element on its right ($A_{14}$). After arriving at the last element of a row the next element would be the left most element in the row below it ($A_{25}$). This is simple and convenient, but not a required way to traverse the matrix. 
-\par Calculating SpMV with this matrix format is straight forward and much faster than if the whole matrix was used. SpMV takes $nnz$ multiplications and $nnz-M$ additions, where $nnz$ is the number of non-zero values in the matrix and $M$ is the height of the matrix. This totals $2\times nnz - M$ floating point operations. However, the convention in the field uses a slightly incorrect but simpler $2\times nnz$ to report performance, which we use to report our performance. The difference is usually only a slight over estimate of the actual performance, but the difference could be significant if $nnz/M$ (number of non-zero elements per row) is small.
+You will notice that the elements are traversed in row-major form. Row-major traversal starts at the left most element of the first row ($A_{11}$), and then proceeds to the next element on its right ($A_{14}$). After arriving at the last element of a row, the next element would be the left most element in the row below it ($A_{25}$). We discuss alternate traversals later in this chapter.
+\par Calculating SpMV with this matrix format is straight forward and much faster than if the whole dense matrix was used. SpMV takes $nnz$ multiplications and $nnz-M$ additions, where $nnz$ is the number of non-zero values in the matrix and $M$ is the height of the matrix. This totals $2\times nnz - M$ floating point operations. However, the convention in the field uses $2\times nnz$ to report performance, which we use to report our performance. The difference is a slight over estimate of the actual performance, but the difference could be significant if $nnz/M$ (number of non-zero elements per row) is small.
 \begin{figure}
 \centering
 \begin{tikzpicture}[blueRect/.style={draw,rectangle,fill=blue!30,thick,minimum width=2cm, minimum height=.7cm}, %
@@ -92,11 +99,12 @@ data/.style={draw,trapezium,fill=blue!30,thick,trapezium left angle=70,trapezium
 \path (J) -- (M);
 
 \end{tikzpicture}
-\caption[SpMV dataflow diagram]{The dataflow is mostly the same for all SpMV implementations. Often the matrix is not stored in COO format and needs be decoded into each matrix's column, row and floating point value. As the dataflow shows, the processor needs the column data before accessing the $x$ vector data.}
+\caption[SpMV dataflow diagram.]{The dataflow is similar for all SpMV implementations. Often the matrix is not stored in COO format and needs be decoded into each matrix's column, row and floating point value. As the dataflow shows, the processor needs the column data before accessing the $x$ vector data.}
 \label{fig:dataflow}
 \end{figure}%
 \section{CPU}
-Computing SpMV on any platform follows the dataflow outlined in \figurename~\ref{fig:dataflow}. It only takes a couple lines to write an SpMV function in c:
+\label{sec:cpu}
+Computing SpMV on any platform follows the dataflow outlined in \figurename~\ref{fig:dataflow}. It only takes a few lines to write an SpMV function in C:
 \begin{verbatim}
 void spmv(double* y, double* x, int* row, int* column, double* value, int nnz,
         int height){
@@ -110,21 +118,21 @@ void spmv(double* y, double* x, int* row, int* column, double* value, int nnz,
     }
 }
 \end{verbatim}
-In fact, this simple code is not that much worse than highly optimized CPU implementations.
-\par The sparsity of the matrix causes CPUs to perform below their potential. A recent Intel publication using 2 Xeon E5-2699 v3 processors show an average performance of 1 TFLOP (1,000 GFLOPs) for matrix matrix multiplication but publishes an average performance of 27 GFLOPS for SpMV.
-\par To understand this look at the equation~\ref{eqn:example} again and count the number of times each value is accessed. The values in the matrix only get accessed once and the values in the vector only get accessed a couple times. This remains the same for large matrices, because, as mentioned, the number of non-zero values per row ($nnz/M$) often grows slowly for larger matrices. This means the computation operations to memory operations ratio is low. Compare this to matrix-matrix multiplication where the ratio is high and each CPU can perform at 500 GFLOPs, almost the limit of the CPU.
-\par The effect of this small ratio effects the CPU less when everything can fit in cache. Although it still exists, because L3 cache has some latency.
-\par There exists several optimizations to improve the performance of SpMV. We cover CPU and GPU optimizations first. As we cover techniques we also look at how they could apply to FPGA implementations. If you are impatient feel free to skip ahead to Chapter~\ref{chp:method}, which talks about our approach to computing SpMV on FPGAs.
+\par The sparsity of the matrix causes CPUs to perform below their potential. A recent Intel publication using 2 Xeon E5-2699 v3 processors show an average performance of 1 TFLOP for matrix matrix multiplication but Intel publishes an average performance of 27 GFLOPS for SpMV.
+\par To understand this, look at Equation~\ref{eqn:example} again and count the number of times each value is accessed (appears in Equation~\ref{eqn:example2}). The values in the matrix only get accessed once and the values in the vector only get accessed a couple times. This remains the same for large matrices, because, as mentioned, the number of non-zero values per row ($nnz/M$) grows slowly for larger matrices. This means the computation operations to memory operations ratio is low. Compare this to matrix-matrix multiplication where the ratio is high and each CPU can perform at 500 GFLOPs, almost the limit of the CPU.
+\par The effect of this small ratio affects the CPU less when everything can fit in cache. In these cases performance is bounded by the bandwidth of the L3 (top level) cache.
 
-\section{Compressed Sparse Row Format (CSR)}
-The first SpMV optimization, compressed sparse row (CSR), is the simplest. The optimization compresses the row indices. The column and value arrays are the same as COO. A compressed row array replaces the row array. The row array usually does not change from one element to the next and when it does it only changes by increasing the index by one. CSR format stores the traversal index of the first element of each row instead of the row index of each element. The traversal index equals the number of non-zero elements that are traversed before the current element is reached. We use the term traversal index to prevent confusion when mentioning row and column index. This change saves up to 4 bytes per element or 25\% over COO format. The CSR format of the matrix in equation~\ref{eqn:example} is shown: \\
+\subsection{Compressed Sparse Row Format (CSR)}
+\label{sec:csr}
+The simpliest optimization over COO is compressed sparse row (CSR). This optimization compresses the row indices. The column and value arrays are the same as they were in COO, but a compressed row array replaces the row array. In COO, the row array usually does not change from one element to the next and when it does it only changes by increasing the index by one. CSR format stores the traversal index of the first element of each row instead of the row index of each element. The traversal index equals the number of non-zero elements that are traversed before the current element is reached. We use the term traversal index to prevent confusion when mentioning row and column index. This change saves up to 4 bytes per element or 25\% over COO format. The CSR format of the matrix in equation~\ref{eqn:example} is shown: \\
 COMPRESSED ROW: 3, 5, 9, 11, 15, 17, 21, 25 \\
 COLUMN: 0, 3, 6, 4, 7, 1, 2, 5, 6, 0, 4, 2, 3, 6, 7, 1, 4, 1, 2, 5, 7, 2, 4, 5\\ 
 VALUE: $A_{11}$, $A_{14}$, $A_{17}$, $A_{25}$, $A_{28}$, $A_{32}$, $A_{33}$, $A_{36}$, $A_{37}$, $A_{41}$, $A_{45}$, $A_{53}$, $A_{54}$, $A_{57}$, $A_{58}$, $A_{62}$, $A_{65}$, $A_{72}$, $A_{73}$, $A_{76}$, $A_{78}$, $A_{83}$, $A_{84}$, $A_{85}$, $A_{86}$ \par
-\section{Block Sparse Row Format (BSR)}
-\par Compression schemes often take advantage of the clumpy structures of sparse matrices. Blocking or register blocking stores dense sub-blocks of the matrix together. This again reduces the matrix storage size by storing fewer indices. Some explicit zeros are added to complete the sub-blocks.
-\par The block sparse row (BSR) storage format is one such block storage scheme. It stores the row and column indices of the top left of the block and stores the values of the block in row major form. This matrix format is usually coupled with a second matrix; meaning the matrix is the sum of 2 matrices one in BSR format the other in CSR or COO. Formats that use the sum of two smaller matrices are called hybrid formats. We have pessimistic view of hybrid formats, because this results in performing SpMV on 2 matrices, both of which are sparser than the original. In general, the rest of the field agrees with this and tries to minimize this negative effect by minimizing the size of the second matrix. \par
-The block sparse for the example in equation \ref{eqn:example} is shown:\\
+\subsection{Block Sparse Row Format (BSR)}
+\label{sec:bsr}
+\par Matrix compression often take advantage of the clumpy structures of sparse matrices. Blocking or register blocking stores dense subblocks of the matrix together. This again reduces the matrix storage size by storing fewer indices. Some explicit zeros are added to complete the subblocks.
+\par The block sparse row (BSR) storage format is one such block storage scheme. It stores the row and column indices of the top left of the block and stores the values of the block in row major form. This matrix format is usually coupled with a second matrix; meaning the matrix is the sum of 2 matrices: one in BSR format, the other in CSR or COO. Formats that use the sum of two smaller matrices are called hybrid formats. We have a pessimistic view of hybrid formats, because this results in performing SpMV on 2 matrices, both of which are sparser than the original. Other papers try to minimize this negative effect by minimizing the size of the second matrix [\cite{prelim:wang1,prelim:vuduc}]. \par
+The block sparse row format for the example in Equation~\ref{eqn:example} is shown:\\
 ROW: 0, 0, 2, 2, 4, 4, 4, 6, 6, 6\\
 COLUMN: 3, 6, 0, 4, 1, 3, 6, 1, 3, 5 \\
 Value: \{$A_{14}$, $0$, $0$, $A_{25}$\}, \{$A_{17}$, $0$, $0$, $A_{28}$\}, \{$0$, $A_{32}$, $A_{41}$, $0$\}, \{$0$, $A_{36}$, $A_{45}$, $0$\}, \{$0$, $A_{53}$, $A_{62}$, $0$\}, \{$A_{54}$, $0$, $0$, $A_{65}$\}, \{$A_{57}$, $A_{58}$, $0$, $0$\}, \{$A_{72}$, $A_{73}$, $0$, $A_{83}$\}, \{$0$, $0$, $A_{84}$, $A_{85}$\}, \{$A_{76}$, $0$, $A_{86}$, $0$\}\\
@@ -132,23 +140,37 @@ Secondary COO Matrix:\\
 ROW: 0, 2, 2, 6\\
 COLUMN: 0, 2, 6, 7\\
 VALUE: $A_{11}$, $A_{33}$, $A_{37}$, $A_{78}$\par
-This simplified example does not actually save space because of the extra zeros stored, however, bitmaps can be used instead storing explicit zero values.
-\section{Cache Blocking}
-\par CPU optimizations also include changing the matrix traversal for better vector reuse. BSR does this to a small extent. One method called Cache blocking traverses large sub-blocks individually before proceeding to the next block. The dimensions of the block are around the size of available cache. This method has similarities to our row column row (RCR) traversal, introduced later in Chapter \ref{chp:compression}. The Cache Blocking in COO format for the example in equation \ref{eqn:example} is shown:\\
-ROW: 0, 0, 2, 2, 3, 0, 1, 1, 2, 2, 3, 4, 4, 5, 6, 6, 7, 7, 4, 4, 5, 6, 6, 7, 7\\
-COLUMN: 0, 3, 1, 2, 0, 6, 4, 7, 5, 6, 4, 2, 3, 1, 1, 2, 2, 3, 6, 7, 4, 5, 7, 4, 5\\
-VALUE: $A_{11}$, $A_{14}$, $A_{32}$, $A_{33}$, $A_{41}$,
-$A_{17}$, $A_{25}$, $A_{28}$, $A_{36}$, $A_{37}$, $A_{45}$,
-$A_{53}$,  $A_{54}$, $A_{62}$, $A_{72}$, $A_{73}$, $A_{83}$, $A_{84}$,
-$A_{57}$, $A_{58}$, $A_{65}$, $A_{76}$, $A_{78}$, $A_{85}$, $A_{86}$\par
+This simplified example does not actually save space because of the extra zeros stored, however, bitmaps can be used instead of storing explicit zero values [\cite{prelim:buluc}].
+\subsection{Cache Blocking}
+\label{sec:blocking}
+\par CPU optimizations also include changing the matrix traversal for better vector reuse. BSR does this to a small extent. One method called Cache blocking traverses large subblocks individually before proceeding to the next block [\cite{prelim:nishtala}]. The dimensions of the blocks are set so that the relevant subsections in the $x$ and $y$ vector fit in cache. This method has similarities to our row column row (RCR) traversal, introduced later in Chapter \ref{chp:compression}. Using the example in Equation~\ref{eqn:example}, one method of cache blocking would be to spit the matrix into 4 smaller matrices:\\
+Submatrix 1:\\
+ROW: 0, 0, 2, 2, 3\\
+COLUMN: 0, 3, 1, 2, 0\\
+VALUE: $A_{11}$, $A_{14}$, $A_{32}$, $A_{33}$, $A_{41}$\\
+Submatrix 2:\\
+ROW: 0, 1, 1, 2, 2, 3\\
+COLUMN: 6, 4, 7, 5, 6, 4\\
+VALUE: $A_{17}$, $A_{25}$, $A_{28}$, $A_{36}$, $A_{37}$, $A_{45}$\\
+Submatrix 3:\\
+ROW: 4, 4, 5, 6, 6, 7, 7\\
+COLUMN: 2, 3, 1, 1, 2, 2, 3\\
+VALUE: $A_{53}$,  $A_{54}$, $A_{62}$, $A_{72}$, $A_{73}$, $A_{83}$, $A_{84}$\\
+Submatrix 4:\\
+ROW: 4, 4, 5, 6, 6, 7, 7\\
+COLUMN: 6, 7, 4, 5, 7, 4, 5\\
+VALUE: $A_{57}$, $A_{58}$, $A_{65}$, $A_{76}$, $A_{78}$, $A_{85}$, $A_{86}$\par
+
 \section{GPU}
+\label{sec:gpu}
 %TODO: fit in average 14 GFLOPS performance
-Before discussing storage formats specific to GPUs, it is important to understand GPUs play the computation game differently than CPUs. To show this let us compare a high end CPU (Intel Xeon E5-2699 v3) and a high-end GPU (Nvidia Tesla K40). The GPU has a max throughput of 1.66 TFLOPS (double precision). The CPU has a max throughput of 518 GFLOPS (double precision). The GPU has 1.5MB of cache. The CPU has 45MB of cache. The cache is growing every generation as well. The previous Tesla (Fermi) had 768KB of cache. The previous Xeon(E7-8890) had 38MB of cache. The GPU is a vector processor making it hard to get good performance on unstructured computation. The GPU supports up to 30720 threads whereas the CPU supports 36 threads. \par
+Before discussing storage formats specific to GPUs, it is important to understand GPUs compute differently than CPUs. To show this let us compare a high end CPU (Intel Xeon E5-2699 v3) and a high-end GPU (Nvidia Tesla K40). The GPU has a max throughput of 1.66 TFLOPS (double precision). The CPU has a max throughput of 518 GFLOPS (double precision). The GPU has 1.5MB of cache. The CPU has 45MB of cache. The cache is growing every generation as well. The previous generation GPU (Tesla Fermi) had 768KB of cache. The previous Xeon(E7-8890) had 38MB of cache. The GPU is a vector processor making it hard to get good performance on unstructured computation. The GPU supports up to 30720 threads whereas the CPU supports 36 threads. \par
     When using a COO format based GPU implementation each thread processes $nnz/30720$ values. Some synchronization occurs to ensure the correct $y$ values are stored. This implementation performs relatively well due to the good load balancing. However, this format does hardly any $x$ vector reuse. In fact, if you disable the cache, you get almost identical performance [\cite{prelim:bell}].\par
     In CSR format, the GPU assigns a thread or group of threads per row. This method achieves much better vector reuse and therefore better performance. One way to think about this is that all the threads start by processing values on the left side of the matrix and proceed to the right. This means different threads will process elements with the same column index at around the same time, leading to $x$ values being reused before getting flushed from the cache.
 
-\section{ELLPACK}
-\par To enable better performance \cite{prelim:bell} introduced ELLPACK, a storage format designed for vector processors. ELLPACK stores the same number of values for each row. Rows with fewer values than the row with the most values are padded with zeros.
+\subsection{ELLPACK}
+\label{sec:ellpack}
+\par To enable better performance \cite{prelim:bell} introduced ELLPACK, a storage format designed for vector processors. ELLPACK stores the same number of values for each row. Rows with fewer values than the row with the most values are padded with zeros. The column values do not matter in the padded zero cases so we mark them with don't care markers ($\times$).
 \begin{equation}
     \textrm{\shortstack{Matrix\\Data}}
     =
@@ -176,12 +198,13 @@ Before discussing storage formats specific to GPUs, it is important to understan
             2 & 3 & 4 & 5
     \end{IEEEeqnarraybox*}\right]
 \end{equation} \par
-Like CSR each thread computes one row of the matrix. However, the ELLPACK matrix is stored in column major order. This enables coalesing memory access. Coalesing memory access essentially means different threads are accessing the same cache lines. The ELLPACK format for the example would be:\\
-COLUMN: 0, 4, 1, 0, 2, 1, 1, 2, 3, 7, 2, 4, 3, 4, 2, 3, 6, \textbackslash 0, 5, \textbackslash 0, 6, \textbackslash 0, 5, 4, \textbackslash 0, \textbackslash 0, 6, \textbackslash 0, 7, \textbackslash 0, 7, 5\\
+In a CSR implementation each thread computes one row of the matrix. However, the ELLPACK matrix is stored in column major order. This enables coalesing memory access. Coalesing memory access essentially means different threads are accessing the same cache lines. The ELLPACK format for the example would be:\\
+COLUMN: 0, 4, 1, 0, 2, 1, 1, 2, 3, 7, 2, 4, 3, 4, 2, 3, 6, $\times$, 5, $\times$, 6, $\times$, 5, 4, $\times$, $\times$, 6, $\times$, 7, $\times$, 7, 5\\
 VALUE: $A_{11}$, $A_{25}$, $A_{32}$, $A_{41}$, $A_{53}$, $A_{62}$, $A_{72}$, $A_{83}$, $A_{14}$, $A_{28}$, $A_{33}$, $A_{45}$, $A_{54}$, $A_{65}$, $A_{73}$, $A_{84}$, $A_{17}$, $0$, $A_{36}$, $0$, $A_{57}$, $0$, $A_{76}$, $A_{85}$, $0$, $0$, $A_{37}$, $0$, $A_{58}$, $0$, $A_{78}$, $A_{86}$ \par
 Bell and Garland also deal with abnormally large rows by creating a hybrid format and store the values of rows with too many into a second COO matrix.
-\section{Block-ELLPACK}
-ELLPACK has seen a lot of variations in the research literature. We discuss one design that marries BSR with ELLPACK called BELLPACK [\cite{prelim:choi}]. We simplify the design a little here. The idea is to combine the index compression of BSR with the memory coalesing benefit of ELLPACK. In this design, we take the 2 densest sub-blocks in every set of 2 rows. The Block-ELLPACK format for the example in equation \ref{eqn:example} is shown below:\\
+\subsection{Block-ELLPACK}
+\label{sec:bellpack}
+ELLPACK has seen a lot of variations in the research literature. We discuss one design that marries BSR with ELLPACK called BELLPACK [\cite{prelim:choi}]. The idea is to combine the index compression of BSR with the memory coalesing benefit of ELLPACK. In this design, we take the 2 densest subblocks in every set of 2 rows. The Block-ELLPACK format for the example in equation \ref{eqn:example} is shown below:\\
 \begin{equation}
     \textrm{\shortstack{Matrix\\Data}}=
     \left[\begin{IEEEeqnarraybox*}[][c]{,c/c,}
@@ -236,7 +259,8 @@ ROW: 0, 2, 2, 4, 4, 6, 7\\
 COLUMN: 0, 2, 6, 6, 7, 7, 3\\
 VALUE: $A_{11}$, $A_{33}$, $A_{37}$, $A_{57}$, $A_{58}$, $A_{78}$, $A_{84}$\par
 \section{FPGA} 
-Like GPUs, FPGAs play by their own computation rules. Although FPGAs usually do not have an advertised FLOPS performance one can be calculated by creating a matrix matrix multiplication engine to load on the FPGA. The work in \cite{prelim:cappello} provided a reasonable matrix matrix multiplication design and created a 144 GFLOPS engine on a Virtex-7 X690T. However, they over utilize DSP blocks by 40\% by using them for addition without using the 25$\times$18 multiplier, and we believe 200 GFLOPS is achievable. \par 
+\label{sec:fpga}
+Like GPUs, FPGAs compute very differently than CPUs. Although FPGAs usually do not have an advertised FLOPS performance one can be calculated by creating a matrix matrix multiplication engine to load on the FPGA. The work in \cite{prelim:cappello} provided a reasonable matrix matrix multiplication design and created a 144 GFLOPS engine on a Virtex-7 X690T. However, they over utilize DSP blocks by 40\% by using them for addition without using the 25$\times$18 multiplier, consequently we believe 200 GFLOPS is achievable on this FPGA. \par 
 \begin{figure}
 \centering
 \begin{tikzpicture}[scale=.8]
@@ -282,12 +306,12 @@ Like GPUs, FPGAs play by their own computation rules. Although FPGAs usually do 
 %\node at (9.25,-.5) [rectangle,fill=white,inner sep=2pt](a){40GB/s Sustained Memory Bandwidth};
 
 \end{tikzpicture}
-\caption[High-level diagram of the Convey HC-2]{$R^3$ implementation on the Convey HC-2 coprocessor: 4 Virtex-5 LX330 FPGAs tiled with 16 $R^3$ SpMV processing elements (PE) each. Each Virtex-5 chip connects to all 8 memory controllers, which enables each chip to have access to all of the coprocessor's memory.}
+\caption[High-level diagram of the Convey HC-2ex.]{Most implementations on the Convey HC-2ex tile the 4 Xilinx Virtex-6 LX760 FPGAs with as many processing elements (PE) as possible. Each Virtex-6 chip connects to all 8 memory controllers, which enables each chip to have access to all of the coprocessor's memory.}
 \label{fig:highlevel1}
 \end{figure}
-Several different HPC FPGA platforms exist. We use the Convey HC-2 (\figurename~\ref{fig:highlevel1}). The basic idea of an FPGA implementation is to design the processor you want and that design can be loaded on to an FPGA. Since CPUs and GPUs suffer from bad SpMV performance it seems possible to design an SpMV processor to load on an FPGA and get better performance.
-\par For example, RAM blocks are distributed equally across the chip meaning that block RAMs can be located in a multiply-accumulator storing intermediate $y$ values. In a CPU the cache is a far distance from the ALU and it does not make as much sense to store many intermediate $y$ values.
-\section{Column Row Traversal}
+Several different HPC FPGA platforms exist. We use the Convey HC-2ex (\figurename~\ref{fig:highlevel1}). The basic idea of an FPGA implementation is to design the processor you want and that design can be loaded on to an FPGA. Since CPUs and GPUs suffer from bad SpMV performance, it is possible to design an SpMV processor to load on an FPGA and get competitive performance.
+\par For example, memory or RAM blocks are distributed equally across the FPGA meaning that block RAMs can be located in a multiply-accumulator storing intermediate $y$ values. In a CPU the ALU (where the floating point computation takes place) has a fixed small amount of memory (registers) and access to more memory (the cache) is far away and has a higher latency making it less practical to store many intermediate $y$ values.
+\subsection{Column Row Traversal}
 \label{sec:colrow}
     As a way to reduce the number of $x$ vector requests, we view registering intermediate $y$ values superior to caching $x$ vector values. Let us compare these 2 strategies with our example matrix. \par
 First, row traversal, for this example assume that the last 4 vector values are stored in cache and then they are flushed from cache. In this scheme cached $x$ values only get reused twice in the example. The first reused value is $A_{72}$. \par
@@ -295,13 +319,14 @@ Second, column traversal for every 4 rows, for this example 4 intermediate $y$ v
 ROW: 0, 3, 2, 2, 0, 1, 3, 2, 0, 2, 1, 5, 6, 4, 6, 7, 4, 7, 5, 7, 6, 7, 4, 4, 6\\
 COLUMN: 0, 0, 1, 2, 3, 4, 4, 5, 6, 6, 7, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7\\
 VALUE: $A_{11}$, $A_{41}$, $A_{32}$, $A_{33}$, $A_{14}$, $A_{25}$, $A_{45}$, $A_{36}$, $A_{17}$, $A_{37}$, $A_{28}$, $A_{62}$, $A_{72}$, $A_{53}$, $A_{73}$, $A_{83}$, $A_{54}$, $A_{84}$, $A_{65}$, $A_{85}$, $A_{76}$, $A_{86}$, $A_{57}$, $A_{58}$, $A_{78}$\par
-This method reuses $x$ values 10 times. So, from our view we get 5$\times$ more $x$ vector reuse for the same amount of on chip memory. CPUs and GPUs have pipelines optimized for accumulating, so if they want to play this way they have to lose some pipeline efficiency.
-\section{Delta Compression}
+This method reuses $x$ values 10 times. So, from our view we get 5 times more $x$ vector reuse for the same amount of on chip memory. CPUs and GPUs have pipelines optimized for accumulating, so if CPUs play this way they have to lose some pipeline efficiency.
+\subsection{Delta Compression}
+\label{sec:delta}
 So far, all the matrix formats store indices as 32-bit values, but this seems wasteful if we already have some knowledge about the indices. Delta compression stores the distance between indices and can get better index compression than other formats like BSR.
-\par The average number of bits to store a delta value is quite small (discussed in Chapter \ref{chp:compression}). \cite{prelim:kourtis} introduces delta compression for CPUs but is vague on the details, however since this uses variable length encoding some uniquely decoded encoding scheme is required. For example Omega codes. This saves a lot of space, but the results are mediocre. The time to decode the deltas into row and column indices requires a non-trivial amount of processing time that potentially could be used for floating point operations. However, FPGAs can dedicate area for decoding, but we will get to that later. The delta codes for the example in equation \ref{eqn:example} is shown:\\
+\par The average number of bits to store a delta value is quite small (discussed in Chapter \ref{chp:compression}). \cite{prelim:kourtis} introduces delta compression for CPUs. This method stores the delta values in either 8, 16, 32, or 64 bits. However, we could use completely variable length codes to store deltas. On CPUs the time to decode the deltas into row and column indices requires a non-trivial amount of processing time that potentially could be used for floating point operations, however, FPGAs can dedicate area for decoding. Using Elias gamma coding [\cite{prelim:elias}] to encode (row major traversal) deltas for the example in equation \ref{eqn:example} is shown:\\
    COMPRESSED ROW: 3, 5, 9, 11, 15, 17, 21, 25 \\
 DELTAS: 1, 3, 3, 5, 3, 2, 1, 3, 1, 1, 4, 3, 1, 3, 1, 2, 3, 2, 1, 3, 2, 3, 1, 1, 1\\
-OMEGA CODES: 0, 101, 101, 11001, 101, 100, 0, 101, 0, 0, 11000, 101, 0, 101, 0, 100, 101, 100, 0, 101, 100, 101, 0, 0, 0 \par
+GAMMA CODES: 1, 011, 011, 00101, 011, 010, 0, 011, 0, 0, 00100, 011, 0, 011, 0, 010, 011, 010, 0, 011, 010, 011, 0, 0, 0 \par
 \begin{figure}
 \centering
 \begin{tikzpicture}
@@ -350,13 +375,15 @@ OMEGA CODES: 0, 101, 101, 11001, 101, 100, 0, 101, 0, 0, 11000, 101, 0, 101, 0, 
 \node at (3,-1.1) {Number of Unique Values in Matrix};
 \node at (-.8,2) [rotate=90] {Performance (Gflops)};
 \end{tikzpicture}
-\caption[Effect of value compression on SpMV performance]{Unique values in a matrix vs the performance of $R^3$. Matrices with fewer than 256 unique values (only common elements exist) enables $R^3$ format to compress much better. The \tikz \draw[fill=yellow] circle(3pt);'s are outliers due to their size (see \figurename~\ref{fig:nnzVgflops}).}
+\caption[Effect of value compression on SpMV performance.]{Unique values in a matrix vs the performance of $R^3$. Matrices with fewer than 256 unique values (only common elements exist) enables $R^3$ format to compress much better. The \tikz \draw[fill=yellow] circle(3pt);'s are outliers due to their size (see \figurename~\ref{fig:nnzVgflops}).}
 \label{fig:uniqueVgflops}
 \end{figure}%
-\section{Value Compression}
-\par The same paper [\cite{prelim:kourtis}] uses value compression, for the matrix values. Again the details are a little vague, but the idea is to take advantage of the fact values repeat. Even though this saves a lot of space for some matrices the results are again mediocre. Again, FPGAs can dedicate area for the decoder, and can potentially get better speedup results. \figurename~\ref{fig:uniqueVgflops} shows the effect of easily compressed values on the performance of our previous work.
+\subsection{Value Compression}
+\label{sec:value}
+\par The same paper [\cite{prelim:kourtis}] also uses value compression, for the matrix values. The idea is to take advantage of the fact values repeat. The unique values are stored in one array. Then a second array stores the indices into this array. This is beneficial when the unique values can fit in the L1 or L2 (lowest level) caches. Again, FPGAs can dedicate area for the decoder, and can potentially get better speedup results. \figurename~\ref{fig:uniqueVgflops} shows the effect of easily compressed values on the performance of our previous work $R^3$ [\cite{prelim:townsend}].
 
 \section{Benchmarking}
+\label{sec:benchmarking}
 \begin{figure}
 \begin{multicols}{4}
 \begin{subfigure}{\linewidth}
@@ -423,10 +450,10 @@ OMEGA CODES: 0, 101, 101, 11001, 101, 100, 0, 101, 0, 0, 11000, 101, 0, 101, 0, 
 \end{subfigure}
 \end{multicols}
 
-\caption[Matrices]{The density plots of the matrices used for testing}
+\caption[The benchmark matrices.]{The density plots of the matrices used for testing}
 \label{fig:matrices}
 \end{figure}
-OK, now that we have a good background about SpMV, the platforms it can run on and optimizations for SpMV, we need a way to determine which implementation performs the best. This is where benchmarking comes in. However, different matrices can have vastly different SpMV performance. So a test set of matrices is used (\figurename~\ref{fig:matrices}). In \figurename~\ref{fig:nnzVgflops} we show the performance of SpMV on CPUs, GPUs and FPGAs. As you can see the performance is very jumpy from matrix to matrix. Three factors effect the performance: dimension, sparsity, and values. \par
+Now that we have a good background about SpMV, the platforms it can run on and optimizations for SpMV, we need a way to determine which implementation performs the best. This is where benchmarking comes in. However, different matrices can have vastly different SpMV performance. So a test set of matrices is used (\figurename~\ref{fig:matrices}). In \figurename~\ref{fig:nnzVgflops} we show the performance of SpMV on CPUs, GPUs and FPGAs. As you can see the performance is very jumpy from matrix to matrix. Three factors effect the performance: dimension, sparsity, and values. \par
 \begin{figure*}
 \centering
 \begin{tikzpicture}[scale=1]
@@ -606,12 +633,12 @@ OK, now that we have a good background about SpMV, the platforms it can run on a
 \node at (key) [rectangle,anchor=west, xshift=-2cm, yshift=-1.5cm]{\shortstack{\tikz{\draw (0,1pt) node[blueTriangle]{};} Intel E5-2690 \\(2 CPUs)}};
 
 \end{tikzpicture}
-\caption[SpMV performance on CPUs, GPUs, FPGAs for different matrices]{$nnz$ vs Performance on each platform. The small matrices, ones around 64K or less, performed poorly on $R^3$, due to the overhead. CPUs experience the opposite effect. They take a performance hit once the matrix no longer fits in cache.}
+\caption[SpMV performance on CPUs, GPUs, FPGAs for different matrices.]{$nnz$ vs Performance on each platform. The small matrices, ones around 64K or less, performed poorly on $R^3$, due to the overhead. CPUs experience the opposite effect. They take a performance hit once the matrix no longer fits in cache.}
 \label{fig:nnzVgflops}
 \end{figure*}
 The dimension of a matrix are the height ($M$), the width ($N$) and the number of nonzeros ($nnz$). These metrics effect different processors differently. \par
 For CPUs, the values $nnz$ and $N$ are important. As \figurename~\ref{fig:nnzVgflops} shows when  $nnz$ is large and the matrix no longer fits in cache it takes a performance hit. It takes a second performance hit, which the figure does not show,  when the width of the matrix ($N$) and therefore the length of the $x$ vector grows to the point when the $x$ vector also can not fit in cache. \par
-For GPUs, cache plays less of a role. However, two factors conspire against GPUs: the matrix formats they use and the amount of RAM on GPU boards. The best performing matrix formats for GPUs, like ELLPACK and Block-ELLPACK, also introduce ``0" values and take up the most memory space. GPU boards currently have at most 12GB of on board RAM compared to the 128 or more possible on CPUs. This means as matrices approach and go beyond 1 billion values then GPUs have to use worse performing matrix formats or be completely unable to perform SpMV. \par
+For GPUs, cache plays less of a role. However, two factors conspire against GPUs: the matrix formats they use and the amount of RAM on GPU boards. The best performing matrix formats for GPUs, like ELLPACK and Block-ELLPACK, also introduce ``0" values and take up the most memory space. GPU boards currently have at most 12GB of on board RAM compared to the 128GB or more possible on CPUs. This means as matrices approach and go beyond 1 billion values then GPUs have to use worse performing matrix formats or be completely unable to perform SpMV. \par
 The $M$ value also plays a role. Recall that the K40 has 30720 threads and ELLPACK uses 1 thread per row. This means the GPU is underutilized when $M<30720$.\par
 For FPGA implementations, like $R^3$, our previous SpMV implementation, $nnz$ value plays a role. The Convey HC-2 has a long memory latency so this meant small matrices ($nnz<64000$) would still take a couple thousand clock cycles to complete or around 0.01ms.\par
 %TODO: sparsity\\

@@ -28,7 +28,7 @@ FPGAs have RAM blocks for designs that require large amounts of memory space. Fo
                 \draw (\i,5) -- (\i, 5.5);
             }
         \end{tikzpicture}
-        \caption{Fully-connected interconnect network}
+        \caption{The fully-connected interconnect network.}
         \label{fig:crossbar}
     \end{figure}
 
@@ -61,7 +61,7 @@ FPGAs have RAM blocks for designs that require large amounts of memory space. Fo
             %\node[xshift=-3,rotate=90,fill=white] at (-.5,-2){Multi-port Memory};
 
         \end{tikzpicture}
-        \caption[Omega multi-port memory]{In the Omega multi-port memory all the buffering occurs in the linked list FIFOs. The use of multi-stage interconnect networks, in this case Omega networks, helps reduce the area of the design.}
+        \caption[The Omega multi-port memory.]{In the Omega multi-port memory all the buffering occurs in the linked list FIFOs. The use of multi-stage interconnect networks, in this case Omega networks, helps reduce the area of the design.}
         \label{fig:versionb}
     \end{figure}
     The Omega multi-port memory (\figurename~\ref{fig:versionb}) has hardware structures designed for scaling. Instead of using fully connected interconnect networks, area efficient multi-stage interconnect networks (MIN) route signals to and from the memory banks. In addition, this memory uses $N$ linked list FIFOs to buffer incoming requests, instead of $N^2$ FIFOs. These two structures pair well, because they both save logic resources. However, both share a common restriction; neither structure can simultaneously send multiple buffered messages, from the same port, to different banks.\par
@@ -138,7 +138,7 @@ For any banking approach, a memory with $N$ ports requires at least $N$ RAM bloc
             \node at (10,-2) {\scriptsize 0};
             \node at (-3,-2) {\scriptsize control=2};
         \end{tikzpicture}
-        \caption[Omega network]{An 8-by-8 Omega network. We turn columns on or off to rotate between different routing configurations.}
+        \caption[The Omega network.]{An 8-by-8 Omega network. We turn columns on or off to rotate between different routing configurations.}
         \label{fig:omega010}
     \end{figure}
 
@@ -148,7 +148,7 @@ The Omega network has features that make it attractive in a multi-port memory de
 
 In the Omega multi-port memory design, the control for this network increments every clock cycle. As an example, input port 5 would connect to output port 5, then port 4, 7, 6, 1, etc., until it cycles around again. This means each input connects to each output an equal number of times.
 
-\subsection{Linked List FIFO}
+\subsection{The Linked List FIFO}
 \label{sec:linkedfifo}
     \begin{figure}
         \center
@@ -381,7 +381,7 @@ In the Omega multi-port memory design, the control for this network increments e
         \caption{Third clock cycle}
         \label{fig:linked3}
     \end{subfigure}
-    \caption[Linked list FIFO]{A linked list FIFO during 3 clock cycles of operation}
+    \caption[The linked list FIFO.]{A linked list FIFO during 3 clock cycles of operation}
         \label{fig:linkedfifo}
     \end{figure}
     The partnering hardware structure, the linked list FIFO (\figurename~\ref{fig:linkedfifo}), contains several internal FIFOs with no predefined space in a single RAM. Similar to a software linked list, there exists a free pointer that points to the beginning of the free space linked list. Other variants of hardware linked list FIFOs exist [\cite{prelim:bell2,prelim:nikologiannis}].
@@ -538,7 +538,7 @@ In the Omega multi-port memory design, the control for this network increments e
             \label{fig:reorder5}
         \end{subfigure}
         %\input{fig/reorder.tex}
-        \caption[Reorder queue]{Reorder queue example.}
+        \caption[The reorder queue]{Reorder queue example.}
         \label{fig:reorder}
     \end{figure}
 
@@ -567,7 +567,7 @@ In the Omega multi-port memory design, the control for this network increments e
     We calculate the throughput of a given benchmark by measuring the ratio of read requests to potential read requests. If no stalls occur, the throughput equals 100\%. We calculate the latency by measuring the number of clock cycles between the last read request and the last read response. 
 \begin{table*}
     \center
-    \caption{Analysis of the Omega multi-port memory design}
+    \caption{Analysis of the Omega multi-port memory design.}
     \label{tbl:resources}
 \begin{threeparttable}
 \begin{tabular}{|l|l|l|l|l|l|}
@@ -675,7 +675,7 @@ Segregated & Throughput & 25\% & 13\% & 6\% & 3\% \\
                                             \tikz \node[greenDiamond] at (0,0) {}; Omega LUTs\\
                                             \tikz \node[blackTriangle] at (0,0) {}; Omega Registers}};
     \end{tikzpicture}
-    \caption[Graph showing the increase in resource utilization as the number of ports in the Omega memory increases]{The effect of varying the number of ports on FPGA resource utilization (area). The Fully-connected memory grows by approximately $N^2$ and the Omega memory grows almost linearly.}
+    \caption[Graph showing the increase in resource utilization as the number of ports in the Omega memory increases.]{The effect of varying the number of ports on FPGA resource utilization (area). The Fully-connected memory grows by approximately $N^2$ and the Omega memory grows almost linearly.}
     \label{fig:portresources}
 \end{figure}
 
@@ -714,7 +714,7 @@ Segregated & Throughput & 25\% & 13\% & 6\% & 3\% \\
         \tikz \node[greenDiamond] at (0,0) {}; Omega}};
 
     \end{tikzpicture}
-    \caption[Graph showing the effect on throughput as the number of ports on the Omega memory increases]{The effect of varying the number of ports on throughput of the random memory access benchmark on the small resource memories.}
+    \caption[Graph showing the effect on throughput as the number of ports on the Omega memory increases.]{The effect of varying the number of ports on throughput of the random memory access benchmark on the small resource memories.}
     \label{fig:portthroughput}
 \end{figure}
 
@@ -761,7 +761,7 @@ In terms of performance, \figurename~\ref{fig:portthroughput} shows that increas
         \node at (30,20) []{\shortstack[l]{\tikz \node[blueSquare] at (0,0) {}; Fully-connected\\
         \tikz \node[greenDiamond] at (0,0) {}; Omega}};
     \end{tikzpicture}
-    \caption[Graph showing the increase in throughput as buffer depth increases]{The effect of varying the depth of the linked list FIFOs and reorder queues on throughput of the random memory access benchmark (using 8-port memories).}
+    \caption[Graph showing the increase in throughput as buffer depth increases.]{The effect of varying the depth of the linked list FIFOs and reorder queues on throughput of the random memory access benchmark (using 8-port memories).}
     \label{fig:reorderthroughput}
 \end{figure}
 
@@ -817,7 +817,7 @@ In terms of performance, \figurename~\ref{fig:portthroughput} shows that increas
                                             \tikz \node[greenDiamond] at (0,0) {}; Omega LUTs\\
                                             \tikz \node[blackTriangle] at (0,0) {}; Omega Registers}};
     \end{tikzpicture}
-    \caption[Graph showing the increase in resource utilization as the bit-width of the memory increases]{The effect of varying the bit-width of the memory on FPGA resource utilization.}
+    \caption[Graph showing the increase in resource utilization as the bit-width of the memory increases.]{The effect of varying the bit-width of the memory on FPGA resource utilization.}
     \label{fig:width}
 \end{figure}
 
