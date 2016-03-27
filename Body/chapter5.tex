@@ -205,7 +205,7 @@ Huffman encoding first creates a Huffman tree, which then is used to create the 
         \caption{Added `d'}
         \label{fig:Huffmantree3}
     \end{subfigure}
-    \caption{trees}
+    \caption[Huffman tree for sparse matrix compression.]{Each step of creating the Huffman tree.}
     \label{fig:huffman_tree}
 \end{figure}
 
@@ -252,6 +252,28 @@ The hardware decoder relies on lookup tables to decode the two streams (see \fig
 \end{figure}
 
 We do not have the exact area and performance of this decoder because we only designed a decoder that combined the index and floating point decoding. However, the first shift buffer uses 293 LUTs and 60 registers. The second shift buffer uses 469 LUTs and 82 registers. The combined decoder has a top frequency of 150 Mhz after place and route using xst.
+
+\subsection{VLC Decoder}
+\begin{figure}
+    \centering
+    \begin{tikzpicture}
+        \draw (1,-.5) -- (7,-.5) -- (7,5) -- (1,5) -- cycle;
+        \node at (0,0) (din){data in};
+        \node at (2.5,1) [rotate = 90,minimum height=1cm,draw] {FIFO};
+        \draw (1.8,2.7) -- (6,2.7);
+        \draw (6,3.3) -- (1.8,3.3);
+        \node at (0,3) (pop){pop};
+        \foreach \i in {1.8,2.4,...,6}{
+            \draw (\i,2.7) -- (\i,3.3);
+        }
+        \draw [->,shorten >=2pt] (pop) -- (1.8,3);
+    \end{tikzpicture}
+    \caption{VLC Decoder.}
+    \label{fig:vlc_decoder}
+\end{figure}
+
+
+\subsection{Huffman Decoder}
 
 \section{Results}
 \label{sec:smc_discussion}
