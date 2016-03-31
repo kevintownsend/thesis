@@ -1120,8 +1120,14 @@ With a clever arrangement of 4 RAMs we can emulate one dual port RAM. To begin w
 %TODO: synthesis results
 \section{Results}
 \label{sec:mac_results}
-%The two important metrics for most MACs are the throughput and synthesis results.
-%\subsection{Throughput}
-%Although the MAC rarely stalls in theory. We thought it would be important to show this in practice as well. We use the matricies from the benchmark and show the percent of time the MAC stalls in each case. We should this in figure X.
-%\subsection{Synthesis}
+The two important metrics for most MACs are the throughput and synthesis results.
+\subsection{Throughput}
+Although the MAC rarely stalls in theory. We thought it would be important to show this in practice as well. We use the matricies from the benchmark and show the percent of time the MAC stalls in each case. We should this in figure X.
+\begin{table}
+    \caption{MAC throughput}
+    \begin{tabular}{c}
+        hello world\\
+    \end{tabular}
+\end{table}
+\subsection{Synthesis}
 We placed and routed one MAC using xst (Xilinx Synthesis Tools). The frequency of the MAC was 263Mhz. The MAC used 3,105 Registers, 3,236 LUTs, 5.5 RAM blocks, and 7 DSP (multiplier) blocks. By default xst uses RAM blocks for the FIFO even though their depth is equal to 32. XST can be forced to use LUTs, which would use 112 more LUTs and 3.5 fewer RAM blocks.
